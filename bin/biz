@@ -1,0 +1,458 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CLI de Misi.
+ *
+ * Uso: php bin/biz <comando> [argumentos]
+ *
+ * No usa Symfony Console ni ninguna otra dependencia externa: el parseo
+ * de $argv y las respuestas de texto plano son simples de resolver a
+ * mano, y una dependencia de Composer aquí solo tendría sentido como
+ * require-dev (no viaja a producción) — no se justifica todavía (ver
+ * docs/architecture.md, sección "Dependencias propuestas").
+ *
+ * Este archivo reemplaza a bin/console.php (Fase 4-10), que ya cumplió
+ * su propósito de "mínimo viable" y se consolidó aquí en la Fase 11.
+ * Los generadores (make:controller, make:model, make:service,
+ * make:repository, make:module) se agregaron en la Fase 12, a este
+ * mismo archivo — no a uno nuevo.
+ */
+
+require __DIR__ . '/../bootstrap/autoload.php';
+
+use Misi\Core\Application;
+use Misi\Database\Migrator;
+use Misi\Database\Seeder;
+
+$basePath = dirname(__DIR__);
+$command = $argv[1] ?? null;
+$argument = $argv[2] ?? null;
+
+function fail(string $message): never
+{
+    fwrite(STDERR, $message . PHP_EOL);
+    exit(1);
+}
+
+// 'serve' y 'make:*' no necesitan levantar Application (config, sesión,
+// conexión a DB...) para hacer su trabajo — se resuelven aparte, sin
+// forzar que el proyecto tenga un .env con credenciales válidas solo
+// para generar un archivo.
+if ($command === 'serve') {
+    runServe(array_slice($argv, 2), $basePath);
+    exit(0);
+}
+
+if ($command !== null && str_starts_with($command, 'make:')) {
+    try {
+        dispatchMake($command, $argument, $basePath);
+    } catch (\Throwable $e) {
+        fail('Error: ' . $e->getMessage());
+    }
+    exit(0);
+}
+
+try {
+    match ($command) {
+        'migrate' => runMigrate(buildMigrator($basePath)),
+        'migrate:rollback' => runRollback(buildMigrator($basePath)),
+        'migrate:status' => runStatus(buildMigrator($basePath)),
+        'db:seed' => runSeed(new Application($basePath)),
+        null, 'list', 'help', '--help', '-h' => printUsage(),
+        default => fail("Comando desconocido: {$command}\n\n" . usageText()),
+    };
+} catch (\Throwable $e) {
+    fail('Error: ' . $e->getMessage());
+}
+
+/**
+ * Arma el Migrator con la fuente 'core' (database/migrations/, sin
+ * prefijo, por compatibilidad con lo ya ejecutado antes de la Fase 10)
+ * más una fuente por cada módulo que declare carpeta de migraciones.
+ */
+function buildMigrator(string $basePath): Migrator
+{
+    $app = new Application($basePath);
+
+    $sources = [
+        ['label' => null, 'path' => $basePath . '/database/migrations'],
+    ];
+
+    foreach ($app->modules() as $module) {
+        if ($module['migrations'] !== null) {
+            $sources[] = ['label' => $module['name'], 'path' => $module['migrations']];
+        }
+    }
+
+    return new Migrator($app->database(), $sources);
+}
+
+function runMigrate(Migrator $migrator): void
+{
+    $executed = $migrator->run();
+
+    if ($executed === []) {
+        echo "Nada que migrar. Todo está al día.\n";
+        return;
+    }
+
+    foreach ($executed as $identifier) {
+        echo "Migrado: {$identifier}\n";
+    }
+}
+
+function runRollback(Migrator $migrator): void
+{
+    $reverted = $migrator->rollback();
+
+    if ($reverted === []) {
+        echo "No hay migraciones para revertir.\n";
+        return;
+    }
+
+    foreach ($reverted as $identifier) {
+        echo "Revertido: {$identifier}\n";
+    }
+}
+
+function runStatus(Migrator $migrator): void
+{
+    $status = $migrator->status();
+
+    if ($status === []) {
+        echo "No hay archivos de migración en database/migrations/ ni en módulos.\n";
+        return;
+    }
+
+    foreach ($status as $row) {
+        $batch = $row['batch'] !== null ? " (batch {$row['batch']})" : '';
+        printf("%-10s %s%s\n", $row['status'], $row['migration'], $batch);
+    }
+}
+
+function runSeed(Application $app): void
+{
+    $seederFile = $app->basePath . '/database/seeders/DatabaseSeeder.php';
+
+    if (!is_file($seederFile)) {
+        fail("No se encontró {$seederFile}");
+    }
+
+    /** @var Seeder $seeder */
+    $seeder = require $seederFile;
+    $seeder->setDatabase($app->database());
+
+    echo "Ejecutando DatabaseSeeder...\n";
+    $seeder->run();
+    echo "Seed completado.\n";
+}
+
+/**
+ * Levanta el servidor embebido de PHP, usando bin/server.php como router
+ * script — no public/index.php directamente. Sin un router que le
+ * devuelva el control al servidor para archivos reales, /css/misi.css
+ * (por ejemplo) terminaría pasando siempre por Misi y devolviendo su
+ * 404 JSON en vez del archivo real (ver docs/frontend.md). En
+ * Apache/Nginx esto no aplica: sirven public/ directamente.
+ *
+ * Uso: php bin/biz serve
+ *      php bin/biz serve 8080
+ *      php bin/biz serve --host=0.0.0.0 --port=8080
+ */
+function runServe(array $args, string $basePath): void
+{
+    $host = '127.0.0.1';
+    $port = '8000';
+
+    foreach ($args as $arg) {
+        if (str_starts_with($arg, '--host=')) {
+            $host = substr($arg, 7);
+        } elseif (str_starts_with($arg, '--port=')) {
+            $port = substr($arg, 7);
+        } elseif (ctype_digit($arg)) {
+            $port = $arg;
+        }
+    }
+
+    $public = $basePath . '/public';
+    $router = $basePath . '/bin/server.php';
+
+    echo "Misi escuchando en http://{$host}:{$port} (Ctrl+C para detener)\n";
+
+    passthru(sprintf(
+        '%s -S %s:%s -t %s %s',
+        escapeshellarg(PHP_BINARY),
+        escapeshellarg($host),
+        escapeshellarg($port),
+        escapeshellarg($public),
+        escapeshellarg($router)
+    ));
+}
+
+function printUsage(): void
+{
+    echo usageText();
+}
+
+function usageText(): string
+{
+    return <<<TXT
+    Misi CLI
+
+    Uso: php bin/biz <comando> [argumentos]
+
+    Comandos disponibles:
+      serve                        Levanta el servidor de desarrollo (por defecto 127.0.0.1:8000)
+      migrate                      Ejecuta las migraciones pendientes (core + módulos)
+      migrate:rollback              Revierte el último lote de migraciones
+      migrate:status                 Muestra el estado de las migraciones
+      db:seed                         Ejecuta database/seeders/DatabaseSeeder.php
+      make:controller Nombre            Genera app/Http/Controllers/{Nombre}Controller.php
+      make:model Nombre                  Genera app/Models/{Nombre}.php
+      make:service Nombre                 Genera app/Services/{Nombre}Service.php
+      make:repository Nombre               Genera app/Repositories/{Nombre}Repository.php
+      make:module Nombre                    Genera la estructura completa en modules/{Nombre}/
+      help                                    Muestra esta ayuda
+
+    Ejemplos:
+      php bin/biz serve
+      php bin/biz serve 8080
+      php bin/biz serve --host=0.0.0.0 --port=8080
+      php bin/biz migrate
+      php bin/biz make:controller Customer
+      php bin/biz make:controller Api/Ping
+      php bin/biz make:module Inventory
+
+    TXT;
+}
+
+/**
+ * -----------------------------------------------------------------
+ * Generadores (make:*) — Fase 12
+ * -----------------------------------------------------------------
+ *
+ * Objetivo explícito del roadmap: "los generadores deben producir
+ * código limpio y entendible". Por eso son plantillas de texto simples
+ * (resources/stubs/*.stub, placeholders {{clave}}) en vez de
+ * construcción programática de AST — lo que se genera es exactamente
+ * lo que se ve en el .stub correspondiente, sin magia.
+ *
+ * Ninguno sobrescribe un archivo existente: si el destino ya existe,
+ * el comando falla en vez de arriesgarse a borrar trabajo del usuario.
+ */
+
+function dispatchMake(string $command, ?string $name, string $basePath): void
+{
+    if ($name === null || trim($name) === '') {
+        fail("Uso: php bin/biz {$command} Nombre");
+    }
+
+    match ($command) {
+        'make:controller' => runMakeController($basePath, $name),
+        'make:model' => runMakeModel($basePath, $name),
+        'make:service' => runMakeService($basePath, $name),
+        'make:repository' => runMakeRepository($basePath, $name),
+        'make:module' => runMakeModule($basePath, $name),
+        default => fail("Comando desconocido: {$command}\n\n" . usageText()),
+    };
+}
+
+function runMakeController(string $basePath, string $name): void
+{
+    $normalized = trim(str_replace('\\', '/', $name), '/');
+    $parts = array_values(array_filter(explode('/', $normalized), fn ($p) => $p !== ''));
+
+    if ($parts === []) {
+        fail('Uso: php bin/biz make:controller NombreController (o Sub/Carpeta/NombreController)');
+    }
+
+    $parts = array_map(studly(...), $parts);
+    $class = array_pop($parts);
+
+    if (!str_ends_with($class, 'Controller')) {
+        $class .= 'Controller';
+    }
+
+    $subNamespace = $parts !== [] ? '\\' . implode('\\', $parts) : '';
+    $namespace = 'App\\Http\\Controllers' . $subNamespace;
+    $relativeDir = $parts !== [] ? implode('/', $parts) . '/' : '';
+    $path = $basePath . '/app/Http/Controllers/' . $relativeDir . $class . '.php';
+
+    $content = renderStub(loadStub($basePath, 'controller.stub'), [
+        'namespace' => $namespace,
+        'class' => $class,
+    ]);
+
+    writeGeneratedFile($path, $content);
+}
+
+function runMakeModel(string $basePath, string $name): void
+{
+    $class = studly($name);
+    $table = guessTableName($class);
+    $path = $basePath . '/app/Models/' . $class . '.php';
+
+    $content = renderStub(loadStub($basePath, 'model.stub'), [
+        'class' => $class,
+        'table' => $table,
+    ]);
+
+    writeGeneratedFile($path, $content);
+    echo "Tabla asumida: {$table} (ajústala en el archivo si tu migración usa otro nombre)\n";
+}
+
+function runMakeService(string $basePath, string $name): void
+{
+    $class = studly($name);
+
+    if (!str_ends_with($class, 'Service')) {
+        $class .= 'Service';
+    }
+
+    $path = $basePath . '/app/Services/' . $class . '.php';
+
+    $content = renderStub(loadStub($basePath, 'service.stub'), [
+        'class' => $class,
+    ]);
+
+    writeGeneratedFile($path, $content);
+}
+
+function runMakeRepository(string $basePath, string $name): void
+{
+    $class = studly($name);
+
+    if (!str_ends_with($class, 'Repository')) {
+        $class .= 'Repository';
+    }
+
+    $base = preg_replace('/Repository$/', '', $class);
+    $table = guessTableName($base !== '' && $base !== null ? $base : $class);
+    $path = $basePath . '/app/Repositories/' . $class . '.php';
+
+    $content = renderStub(loadStub($basePath, 'repository.stub'), [
+        'class' => $class,
+        'table' => $table,
+    ]);
+
+    writeGeneratedFile($path, $content);
+    echo "Tabla asumida: {$table} (ajústala en el archivo si tu migración usa otro nombre)\n";
+}
+
+function runMakeModule(string $basePath, string $name): void
+{
+    $class = studly($name);
+    $dir = $basePath . '/modules/' . $class;
+
+    if (is_dir($dir)) {
+        fail("Ya existe: {$dir} (no se sobrescribe)");
+    }
+
+    foreach (['Controllers', 'Services', 'Repositories', 'Models', 'Views', 'migrations'] as $sub) {
+        $subDir = $dir . '/' . $sub;
+        if (!mkdir($subDir, 0755, true) && !is_dir($subDir)) {
+            fail("No fue posible crear: {$subDir}");
+        }
+        file_put_contents($subDir . '/.gitkeep', '');
+    }
+
+    $routePrefix = str_replace('_', '-', toSnakeCase($class));
+
+    file_put_contents(
+        $dir . '/module.php',
+        renderStub(loadStub($basePath, 'module/module.stub'), ['class' => $class])
+    );
+
+    file_put_contents(
+        $dir . '/routes.php',
+        renderStub(loadStub($basePath, 'module/routes.stub'), [
+            'class' => $class,
+            'route_prefix' => $routePrefix,
+        ])
+    );
+
+    echo "Módulo creado: modules/{$class}/\n";
+    echo "  - module.php\n";
+    echo "  - routes.php (sin rutas activas todavía, ver el comentario dentro)\n";
+    echo "  - Controllers/, Services/, Repositories/, Models/, Views/, migrations/ (vacías)\n\n";
+    echo "Siguiente paso: agrega tu primer controlador y migración — modules/Example/\n";
+    echo "(incluido en el proyecto) muestra el patrón completo funcionando.\n";
+}
+
+/** @param array<string, string> $replacements */
+function renderStub(string $stub, array $replacements): string
+{
+    $search = array_map(static fn (string $key) => '{{' . $key . '}}', array_keys($replacements));
+
+    return str_replace($search, array_values($replacements), $stub);
+}
+
+function loadStub(string $basePath, string $stubName): string
+{
+    $path = $basePath . '/resources/stubs/' . $stubName;
+
+    if (!is_file($path)) {
+        fail("Stub no encontrado: {$path}");
+    }
+
+    return (string) file_get_contents($path);
+}
+
+function writeGeneratedFile(string $path, string $content): void
+{
+    if (is_file($path)) {
+        fail("Ya existe: {$path} (no se sobrescribe)");
+    }
+
+    $dir = dirname($path);
+
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        fail("No fue posible crear el directorio: {$dir}");
+    }
+
+    file_put_contents($path, $content);
+    echo "Creado: {$path}\n";
+}
+
+/** PascalCase a partir de snake_case, kebab-case o texto ya en PascalCase. */
+function studly(string $value): string
+{
+    $value = str_replace(['-', '_'], ' ', $value);
+    $value = ucwords($value);
+
+    return str_replace(' ', '', $value);
+}
+
+function toSnakeCase(string $value): string
+{
+    $value = preg_replace('/(?<!^)[A-Z]/', '_$0', $value) ?? $value;
+
+    return strtolower($value);
+}
+
+/**
+ * Pluralización heurística en inglés (products, categories, businesses),
+ * suficiente para el uso común de nombres de tabla. No pretende ser
+ * perfecta para todos los casos — el generador siempre avisa que se
+ * puede ajustar a mano.
+ */
+function pluralizeSnake(string $word): string
+{
+    if (preg_match('/(s|x|z|ch|sh)$/', $word) === 1) {
+        return $word . 'es';
+    }
+
+    if (preg_match('/[^aeiou]y$/', $word) === 1) {
+        return substr($word, 0, -1) . 'ies';
+    }
+
+    return $word . 's';
+}
+
+function guessTableName(string $className): string
+{
+    return pluralizeSnake(toSnakeCase($className));
+}
