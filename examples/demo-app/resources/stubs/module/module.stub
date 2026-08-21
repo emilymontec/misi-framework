@@ -1,0 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Descriptor del módulo {{class}}. Ver docs/modules.md para el contrato
+ * completo y modules/Example/ como referencia funcional.
+ */
+return [
+    'name' => '{{class}}',
+    'routes' => __DIR__ . '/routes.php',
+    'migrations' => __DIR__ . '/migrations',
+];

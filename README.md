@@ -50,6 +50,10 @@ Para saber qué está construido, qué sigue y en qué orden, ver
 ✅ **Fase 13 — UI utilities**: CSS base (`public/css/misi.css`, 8
    componentes) + JS vanilla (`api.js`, `ui.js`), demo en `GET /ui-kit`.
    Ver `docs/frontend.md`.
+✅ **Fase 14 — Demo Application**: `examples/demo-app/` — un taller de
+   bordados completo (login, CRUD de clientes/pedidos, upload, permisos,
+   módulo propio) reutilizando el `framework/` de este proyecto por ruta
+   relativa, sin copiarlo. Ver `examples/demo-app/README.md`.
 ⬜ Resto de fases: ver `ROADMAP.md`.
 
 Esto es una **base ejecutable**, no un mockup: el servidor de desarrollo
@@ -232,6 +236,25 @@ pagination, cards) + JS vanilla sin dependencias
 `showAlert/confirmAction/modal/formSubmit`). Sin ningún framework
 frontend. Detalle completo en [`docs/frontend.md`](docs/frontend.md).
 
+## Demo Application
+
+```bash
+cd examples/demo-app
+cp .env.example .env   # tu propia base de datos, separada de la de arriba
+php bin/biz migrate
+php bin/biz db:seed
+php bin/biz serve
+# abre http://localhost:8000 — login: staff@bordados.test / changeme
+```
+
+Un taller de bordados completo: login, CRUD de clientes y pedidos, subida
+de imagen de referencia, permisos, y un módulo de reportes propio — todo
+el stack funcionando junto, con interfaz real (no solo JSON). Reutiliza
+el `framework/` de este mismo proyecto por ruta relativa, sin copiarlo:
+es la prueba en código de que un segundo proyecto no repite el
+framework, solo su propia capa de negocio. Detalle completo en
+[`examples/demo-app/README.md`](examples/demo-app/README.md).
+
 ## Estructura del proyecto
 
 ```text
@@ -259,6 +282,8 @@ misi/
 │   ├── Logging/                # Logger (niveles, redacción automática)
 │   ├── Exceptions/            # HttpException, NotFoundException, ValidationException...
 │   └── Support/               # Env, Config, Session
+├── examples/
+│   └── demo-app/              # App de ejemplo completa (Fase 14) — reutiliza framework/, ver su README
 ├── modules/                  # Módulos (ver modules/Example/ como referencia)
 ├── public/                    # Document root
 │   ├── index.php               # Front controller (idéntico en producción)

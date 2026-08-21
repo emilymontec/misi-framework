@@ -525,7 +525,55 @@ Ver `docs/modules.md` para la guía de uso completa.
   incluido con output buffering — no se introduce Blade/Twig hasta que
   la repetición de HTML entre vistas de un proyecto real lo justifique.
 
-## 18. Estrategia de autoloading
+## 18. Diseño de la Demo Application (implementado, Fase 14)
+
+- `examples/demo-app/`: un taller de bordados con clientes y pedidos —
+  caso de uso concreto, no datos abstractos tipo "foo/bar". Objetivo
+  explícito del roadmap: demostrar todas las fases funcionando *juntas*,
+  no cada una aislada como las demos por fase (`/ui-kit`,
+  `/api/validate-demo`, etc.).
+- **Reutiliza `framework/` por ruta relativa, no lo copia.** El
+  `bootstrap/autoload.php` de la demo mapea `Misi\` a
+  `dirname(__DIR__, 3) . '/framework/'` (la del proyecto padre); `App\` y
+  `Modules\` sí son propios de la demo. Esto no es una optimización de
+  espacio: es la demostración en código, no solo en prosa, de la premisa
+  central de todo el proyecto — "construir el framework una vez,
+  reutilizarlo en múltiples proyectos" (ver sección 1). Un bug real
+  apareció aquí durante la implementación: un cálculo de niveles de
+  directorio (`dirname(__DIR__, 2)` en vez de `3`) rompía el autoload por
+  completo — corregido y verificado antes de dar la fase por cerrada.
+- **`bin/biz`, `bin/server.php` y `resources/stubs/` sí se copian**
+  (no se comparten por ruta relativa) — a diferencia de `framework/`,
+  estos son parte de "cómo se trabaja en este proyecto específico", no
+  del framework en sí. Confirma el criterio de la arquitectura: lo que
+  es realmente framework (Fase 1-13, en `framework/`) se comparte; lo
+  que es "capa de proyecto" (`bin/`, `app/`, `database/`, `routes/`,
+  `resources/`, `modules/`, `config/`) se copia y adapta por proyecto.
+- **Interfaz real, no solo endpoints JSON.** `resources/views/app.php`
+  usa `public/css/misi.css` + `public/js/api.js` + `public/js/ui.js` de
+  la Fase 13 **sin modificarlos** — login, tablas, modales con formularios
+  reales (`formSubmit()`, incluida la detección automática de
+  `<input type="file">` para mandar `multipart/form-data`). Es la
+  primera vez en el proyecto que se ve el stack completo funcionando en
+  una pantalla, no fragmentado por fase.
+- **Decisiones deliberadamente distintas a las demos del proyecto padre**,
+  documentadas explícitamente en `examples/demo-app/README.md`: Storage
+  protegido con `auth` (son fotos de pedidos de clientes, no avatares
+  públicos — a diferencia de la demo pública de la Fase 8), y
+  autorización verificada a mano en el controlador
+  (`Auth::can('orders.manage')`) en vez de vía middleware, consistente
+  con el criterio ya establecido en `docs/authorization.md`.
+- **Módulo `Reports` con lógica real**: un resumen que combina datos de
+  `customers` y `orders`, no un ping — demuestra que Modules (Fase 10)
+  resuelve necesidades de negocio genuinas, no solo la mecánica de
+  registro de rutas/migraciones.
+- Probado de punta a punta contra MariaDB real (base de datos separada
+  de la del proyecto padre): CSRF, validación con email duplicado, upload
+  real de imagen con verificación de contenido, protección de acceso a
+  Storage con y sin sesión, cambio de estado, borrado con permiso
+  verificado, y cascada de borrado vía foreign key.
+
+## 19. Estrategia de autoloading
 
 - PSR-4 vía Composer (`composer.json` ya configurado con `Misi\` →
   `framework/`, `App\` → `app/`).
@@ -536,7 +584,7 @@ Ver `docs/modules.md` para la guía de uso completa.
   Composer cuando sí esté disponible (el bootstrap prioriza
   `vendor/autoload.php` si existe).
 
-## 19. Estrategia de testing
+## 20. Estrategia de testing
 
 - No se escriben "cientos de tests" desde el día uno. Se prioriza que el
   código sea testeable (constructores explícitos, sin estado estático
@@ -552,7 +600,7 @@ Ver `docs/modules.md` para la guía de uso completa.
   (matching de rutas y parámetros), Validation (reglas), Auth, Storage
   (validación de uploads), Security (CSRF).
 
-## 20. Dependencias propuestas
+## 21. Dependencias propuestas
 
 | Dependencia | ¿Para qué? | ¿Por qué no implementarlo propio? | Impacto despliegue | Impacto mantenimiento |
 |---|---|---|---|---|
@@ -564,7 +612,7 @@ debe justificar explícitamente: qué problema resuelve, por qué no conviene
 implementarlo a mano, impacto en despliegue e impacto en mantenimiento (regla
 definida en los principios del proyecto).
 
-## 21. Riesgos técnicos
+## 22. Riesgos técnicos
 
 1. **Tentación de sobre-generalizar el Router o el Query Builder.**
    Mitigación: regla de oro de abstracciones (sección 46 de los
@@ -591,7 +639,7 @@ definida en los principios del proyecto).
    Mitigación: cada fase del roadmap debe justificarse con una necesidad
    real de un proyecto, no con "podría servir".
 
-## 22. Qué NO debemos implementar (por ahora)
+## 23. Qué NO debemos implementar (por ahora)
 
 - ORM completo (Eloquent-like).
 - Contenedor de inyección de dependencias con autowiring por reflexión.
@@ -608,7 +656,7 @@ definida en los principios del proyecto).
   el futuro Business Core, no en el framework.
 - Frontend framework (React/Vue/Angular) como dependencia del framework.
 
-## 23. Ejemplo de cómo una aplicación usaría Misi
+## 24. Ejemplo de cómo una aplicación usaría Misi
 
 ```php
 // routes/web.php

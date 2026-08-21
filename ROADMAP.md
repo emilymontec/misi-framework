@@ -435,11 +435,38 @@ servidor. Ver [`docs/frontend.md`](docs/frontend.md).
 **Objetivo:** aplicación de ejemplo que demuestre todo lo anterior
 funcionando junto, sin ser parte del framework.
 
-- [ ] `examples/demo-app/` con: login, usuarios, CRUD, base de datos,
+- [x] `examples/demo-app/` con: login, usuarios, CRUD, base de datos,
       validación, upload, API, permisos, un módulo de ejemplo
-- [ ] Explícitamente fuera de `framework/`, `app/`, `modules/` de producción
+- [x] Explícitamente fuera de `framework/`, `app/`, `modules/` de producción
+- [x] Reutiliza el `framework/` del proyecto padre por ruta relativa (no
+      copia) — demuestra en código, no solo en documentación, la premisa
+      central del proyecto: construir una vez, reutilizar en múltiples
+      proyectos
+- [x] Caso de uso real y concreto: taller de bordados con clientes y
+      pedidos (no datos abstractos tipo "foo/bar")
+- [x] Interfaz funcional de verdad (`resources/views/app.php`), usando
+      `public/css/misi.css` + `public/js/api.js` + `public/js/ui.js` de
+      la Fase 13 sin modificarlos — primera vez que se ve todo el stack
+      funcionando junto en una pantalla, no solo en endpoints JSON
+      probados con curl
+- [x] Módulo `Reports` con lógica de negocio real (resumen combinando
+      dos tablas), no un ping — demuestra Modules (Fase 10) resolviendo
+      algo genuino
+- [x] Storage protegido con `auth` (a diferencia de la demo pública del
+      proyecto padre) — decisión correcta para este caso de uso, documentada
+- [x] Autorización verificada a mano en el controlador
+      (`Auth::can('orders.manage')`), consistente con `docs/authorization.md`
+- [x] `examples/demo-app/README.md` explicando qué demuestra cada parte
 
-**Estado: ⬜ Pendiente**
+**Estado: ✅ Completo** — probado de punta a punta contra MariaDB real
+(base de datos separada, `bordados_demo`): migraciones y seed poblando
+datos demo, login, listado de clientes/pedidos, creación con validación
+(incluyendo rechazo de email duplicado), subida de imagen real con
+`multipart/form-data`, imagen servida correctamente solo con sesión
+activa (401 sin sesión, 200 con sesión), cambio de estado de pedido,
+borrado con permiso verificado, cascada de borrado vía foreign key, y
+que la imagen deja de existir tras borrar su pedido (404). 12 casos de
+prueba, todos exitosos.
 
 ---
 
@@ -541,8 +568,8 @@ Semantic Versioning (`MAJOR.MINOR.PATCH`):
 - `0.8.0` → Fase 10 completa (Modules — infraestructura)
 - `0.9.0` → Fase 11 completa (CLI)
 - `0.10.0` → Fase 12 completa (Generadores)
-- `0.11.0` → Fase 13 completa (UI utilities) ← **estado actual**
-- `0.12.0` → Fase 14 (Demo Application)
+- `0.11.0` → Fase 13 completa (UI utilities)
+- `0.12.0` → Fase 14 completa (Demo Application) ← **estado actual**
 - `1.0.0` → Fase 15 (Hardening) completa — API interna estable
 
 Mantener `CHANGELOG.md` a partir de la primera release etiquetada.
