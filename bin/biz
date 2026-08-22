@@ -70,8 +70,10 @@ try {
 
 /**
  * Arma el Migrator con la fuente 'core' (database/migrations/, sin
- * prefijo, por compatibilidad con lo ya ejecutado antes de la Fase 10)
- * más una fuente por cada módulo que declare carpeta de migraciones.
+ * prefijo, por compatibilidad con lo ya ejecutado antes de la Fase 10),
+ * la fuente 'Business' (business/migrations/, Fase 16 — solo si el
+ * proyecto copió esa carpeta; no todo proyecto usa Business Core) y una
+ * fuente por cada módulo que declare carpeta de migraciones.
  */
 function buildMigrator(string $basePath): Migrator
 {
@@ -80,6 +82,10 @@ function buildMigrator(string $basePath): Migrator
     $sources = [
         ['label' => null, 'path' => $basePath . '/database/migrations'],
     ];
+
+    if (is_dir($basePath . '/business/migrations')) {
+        $sources[] = ['label' => 'Business', 'path' => $basePath . '/business/migrations'];
+    }
 
     foreach ($app->modules() as $module) {
         if ($module['migrations'] !== null) {

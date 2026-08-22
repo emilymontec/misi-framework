@@ -51,6 +51,13 @@ Ver `docs/database.md` para el formato de las migraciones y
 `docs/modules.md` para cómo se combinan las del core con las de cada
 módulo. Requieren `.env` configurado con credenciales de MySQL válidas.
 
+`bin/biz` necesita línea de comandos en el servidor donde vive la base de
+datos de producción. En hosting sin SSH (InfinityFree y equivalentes),
+eso no está disponible — `migrate`/`migrate:status`/`migrate:rollback`/
+`db:seed` tienen un equivalente disparado por HTTP en
+`deploy/infinityfree/web-runner.php` (Fase 15), ver
+`docs/deployment-infinityfree.md`.
+
 ## `db:seed`
 
 Ejecuta `database/seeders/DatabaseSeeder.php`. Si tu proyecto tiene

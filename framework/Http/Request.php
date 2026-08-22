@@ -128,6 +128,35 @@ final class Request
         return (string) ($this->server['REMOTE_ADDR'] ?? '0.0.0.0');
     }
 
+    /**
+     * Usado por Application (Fase 15) para decidir si envía
+     * Strict-Transport-Security. Revisa dos señales:
+     *
+     *  1. HTTPS en $_SERVER: lo que pone Apache/Nginx cuando TLS
+     *     termina en el propio servidor de la app.
+     *  2. Cabecera X-Forwarded-Proto: lo que pone un proxy que termina
+     *     TLS delante de la app (ej. Cloudflare, que es como
+     *     InfinityFree entrega su SSL gratuito — ver
+     *     docs/deployment-infinityfree.md). Ahí Apache ve HTTP plano
+     *     internamente aunque el visitante esté en HTTPS real.
+     *
+     * Confiar en X-Forwarded-Proto es seguro para este uso específico:
+     * como mucho, un valor falsificado hace que se envíe una cabecera
+     * HSTS de más sobre una conexión HTTP real, y los navegadores
+     * ignoran HSTS recibido fuera de una conexión HTTPS genuina (no es
+     * una decisión de autorización, así que no hay nada que un atacante
+     * gane falsificándola).
+     */
+    public function isSecure(): bool
+    {
+        $https = strtolower((string) ($this->server['HTTPS'] ?? ''));
+        if ($https !== '' && $https !== 'off') {
+            return true;
+        }
+
+        return strtolower((string) $this->header('X-Forwarded-Proto', '')) === 'https';
+    }
+
     public function rawBody(): string
     {
         return $this->rawBody;

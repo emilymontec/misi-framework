@@ -573,6 +573,15 @@ Ver `docs/modules.md` para la guía de uso completa.
   Storage con y sin sesión, cambio de estado, borrado con permiso
   verificado, y cascada de borrado vía foreign key.
 
+## 18.1 Hardening (implementado, Fase 15)
+
+No es un subsistema nuevo, así que no repite el patrón "Diseño de X" de
+las secciones anteriores — es una auditoría transversal sobre todo lo
+construido en las Fases 1-14, más la verificación de despliegue en
+hosting compartido sin SSH. Detalle completo, con hallazgos y
+verificación contra MariaDB real: `docs/security.md` (sección "Auditoría
+Fase 15") y `docs/deployment-infinityfree.md`.
+
 ## 19. Estrategia de autoloading
 
 - PSR-4 vía Composer (`composer.json` ya configurado con `Misi\` →
@@ -605,6 +614,7 @@ Ver `docs/modules.md` para la guía de uso completa.
 | Dependencia | ¿Para qué? | ¿Por qué no implementarlo propio? | Impacto despliegue | Impacto mantenimiento |
 |---|---|---|---|---|
 | Ninguna en `require` (producción) | — | El objetivo es cero dependencias obligatorias para que Misi corra en cualquier hosting compartido con solo PHP+MySQL | Ninguno | Ninguno |
+| `ext-mbstring` (extensión de PHP, no paquete Composer) | `Validator` (Fase 5) mide longitud de strings con `mb_strlen()` para soportar acentos/UTF-8 correctamente (`docs/validation.md`) | No es una dependencia de terceros — es una extensión estándar de PHP, habilitada por defecto en la inmensa mayoría de builds/hosting compartido (incluido InfinityFree). Se declara explícitamente (Fase 15) para que una instalación con Composer falle temprano y con mensaje claro si faltara, en vez de un error críptico en medio de una request real. `bootstrap/autoload.php` además verifica esto en tiempo de ejecución para el caso sin Composer (fallback manual), donde `composer.json` no se llega a leer. | Ninguno en la práctica (universal en hosting PHP moderno) | Ninguno |
 | `phpunit/phpunit` (futuro, `require-dev`) | Testing automatizado | Reimplementar un test runner sería puro desperdicio de tiempo; PHPUnit es el estándar y no viaja a producción | Ninguno (dev only) | Bajo, muy documentado |
 
 No se plantea ninguna otra dependencia por ahora. Cualquier propuesta futura
@@ -634,7 +644,10 @@ definida en los principios del proyecto).
    (deshabilitar ejecución de PHP en el directorio de uploads).
 5. **Hosting compartido variable.** No todos los hosting compartidos
    permiten `composer install` o acceso SSH. Mitigación ya implementada:
-   autoload de respaldo sin Composer (sección 14).
+   autoload de respaldo sin Composer (sección 14), verificado
+   específicamente contra las restricciones de InfinityFree (sin SSH, sin
+   acceso remoto a MySQL) en la Fase 15 — ver
+   `docs/deployment-infinityfree.md`.
 6. **Deriva de alcance ("scope creep") hacia un framework generalista.**
    Mitigación: cada fase del roadmap debe justificarse con una necesidad
    real de un proyecto, no con "podría servir".

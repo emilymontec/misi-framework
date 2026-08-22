@@ -16,6 +16,25 @@ declare(strict_types=1);
 
 $vendorAutoload = dirname(__DIR__, 3) . '/vendor/autoload.php';
 
+// Fase 15 (auditoría de hosting compartido): ver el comentario equivalente
+// en bootstrap/autoload.php del proyecto padre — mismo motivo, mismo fix,
+// duplicado aquí porque esta demo tiene su propio bootstrap.
+if (!extension_loaded('mbstring')) {
+    $message = "Misi requiere la extensión PHP 'mbstring', que no está "
+        . "habilitada en este servidor. En hosting compartido, actívala "
+        . "desde el panel de control (selector de versión/extensiones de "
+        . "PHP) y vuelve a intentar.\n";
+
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, $message);
+    } else {
+        http_response_code(500);
+        echo $message;
+    }
+
+    exit(1);
+}
+
 if (is_file($vendorAutoload)) {
     require $vendorAutoload;
     return;

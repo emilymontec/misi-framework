@@ -1,0 +1,51 @@
+# Misi — front controller para hosting compartido basado en Apache
+# (InfinityFree y equivalentes).
+#
+# Este archivo se sube como `.htaccess` (con el punto) dentro de htdocs/,
+# junto a index.php y los assets estáticos (css/js). NO se sube a la raíz
+# de la cuenta ni a ninguna carpeta fuera de htdocs.
+#
+# Qué hace:
+#  1. Fuerza HTTPS (InfinityFree entrega SSL gratuito vía Cloudflare;
+#     las cookies de sesión de Misi se marcan `Secure` en producción, así
+#     que sin este redirect la sesión no funcionaría en HTTP).
+#  2. Si la request pide un archivo o directorio que existe de verdad
+#     (public/css/misi.css, public/js/api.js...), Apache lo sirve
+#     directo — Misi nunca ve esa request.
+#  3. Todo lo demás pasa por index.php (el front controller de Misi).
+#  4. Bloquea el acceso directo a dotfiles (.env si por error terminara
+#     aquí, .git, .htaccess mismo, etc.).
+#  5. Cabeceras de seguridad básicas.
+
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Sintaxis Apache 2.4 (Require) con fallback 2.2 (Order/Deny) — algunos
+# hosts compartidos siguen reportando el módulo antiguo.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

@@ -24,6 +24,12 @@ Corre la migración para tener las tablas:
 php bin/biz migrate
 ```
 
+`role_user` tiene además un índice sobre `user_id`
+(`004_add_role_user_user_id_index.php`, Fase 15) — `Auth::can()` filtra
+por esa columna en cada verificación de permiso, y la `PRIMARY KEY`
+compuesta `(role_id, user_id)` no la cubre por sí sola (regla de prefijo
+izquierdo).
+
 ## Uso
 
 ```php

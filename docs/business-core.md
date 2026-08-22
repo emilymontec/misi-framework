@@ -1,0 +1,118 @@
+# Business Core
+
+Capa de funcionalidades de negocio reutilizables, construida **sobre**
+el framework, nunca mezclada con él. Vive en `business/`, namespace
+`Misi\Business\`, al mismo nivel que `framework/`, `app/` y `modules/`.
+
+## Regla de esta capa
+
+El framework (`framework/`) no sabe qué es un cliente ni un pedido —
+esa regla no cambia con Business Core. `business/` sí puede depender de
+`framework/` (usa `Database`, `Validator`, las excepciones de Fase 9),
+nunca al revés, y **nunca se registra en `Application`** (no existe
+`app()->customers()`) — un proyecto instancia las clases de
+`business/` directamente en su propio código, igual que instanciaría
+cualquier otra clase suya.
+
+## Por qué esto existe (y por qué no existía antes)
+
+Cada entidad que entra acá tiene que estar respaldada por **2+
+proyectos reales** que la necesiten con la misma forma — el mismo
+principio de "regla de oro de abstracciones" que gobierna el resto del
+framework, aplicado a este nivel. Generalizar a partir de un solo
+proyecto es adivinar; esta capa existe para ahorrar tiempo real, no
+para anticipar necesidades hipotéticas.
+
+## Qué hay hoy: `Customers`
+
+```php
+use Misi\Business\Customers\CustomerRepository;
+
+$customers = new CustomerRepository(app()->database());
+
+$customers->all();
+$customers->find(3);
+$customers->findOrFail(3);          // lanza NotFoundException si no existe
+
+$data = app()->validator()->validate(
+    $request->all(),
+    $customers->rulesForCreate()
+);
+$id = $customers->create($data);
+
+$data = app()->validator()->validate(
+    $request->all(),
+    $customers->rulesForUpdate($id)
+);
+$customers->update($id, $data);
+
+$customers->delete($id);
+```
+
+Migración: `business/migrations/001_create_customers_table.php` — se
+descubre sola con `php bin/biz migrate` si la carpeta `business/`
+existe en el proyecto (ver "Cómo se descubre" más abajo). Aparece en
+`migrate:status` bajo el label `Business`, igual que un módulo.
+
+Es exactamente el mismo código y la misma tabla que ya usaba
+`examples/demo-app/app/Http/Controllers/CustomerController.php` —
+movidos acá porque un segundo proyecto real (tienda/retail, en
+planificación) necesita lo mismo, con la misma forma. `demo-app` **no**
+fue migrado a consumir esta clase (ver más abajo) — es la misma lógica
+en dos lugares por ahora, a propósito.
+
+### Extender las reglas de validación
+
+Si un proyecto necesita un campo propio en `customers` (poco común,
+pero puede pasar), no hace falta reescribir las reglas — se fusionan:
+
+```php
+$rules = [
+    ...$customers->rulesForCreate(),
+    'tax_id' => ['nullable', 'string', 'max:20'],
+];
+```
+
+El campo extra necesita su propia migración en `database/migrations/`
+del proyecto (ej. `ALTER TABLE customers ADD COLUMN tax_id ...`),
+aditiva sobre la de Business Core — mismo patrón que cualquier cambio
+de esquema posterior (ver `docs/database.md`).
+
+## Qué NO hay todavía, y por qué
+
+Ver el detalle completo y actualizado en `ROADMAP.md`, sección "Fase
+16 — Business Core" — ahí queda registrado qué entidad está pendiente
+porque le falta un segundo proyecto real, y cuál está deliberadamente
+congelada (🧊) porque no hay necesidad real, no porque falte tiempo.
+En resumen, a la fecha de este documento:
+
+- **`Orders` no está generalizado.** Las dos formas reales conocidas
+  (descripción libre en el taller vs. líneas de detalle en el retail)
+  divergen demasiado para generalizar sin adivinar — se retoma cuando
+  el segundo proyecto tenga una implementación real que comparar.
+- **Multi-tenant (`business_id`) está congelado.** Ningún proyecto real
+  necesita que varios negocios compartan un despliegue — cada cliente
+  tiene su propio despliegue independiente. Agregar `business_id` ahora
+  sería diseñar para un escenario SaaS que todavía no existe.
+- **`Products`, `Payments`, `Deliveries`, `Files`, `Reports`**: sin
+  segunda necesidad real confirmada.
+
+## Cómo se descubre (migraciones)
+
+`bin/biz` (y su equivalente para hosting sin SSH,
+`deploy/infinityfree/web-runner.php`) revisan si existe
+`business/migrations/` en el proyecto y, si existe, la agregan como
+fuente adicional del `Migrator` — el mismo mecanismo que ya usan los
+módulos (Fase 10), solo que con un label fijo `Business` en vez de uno
+por módulo. Un proyecto que no copió `business/` simplemente no tiene
+esa carpeta, y `bin/biz migrate` sigue funcionando igual que siempre
+(la fuente se agrega solo si el directorio existe).
+
+## Cómo se lleva esto a un proyecto nuevo
+
+Igual que `framework/`: se copia la carpeta `business/` completa al
+proyecto nuevo, junto a `framework/`. No hay instalación vía Composer
+todavía (no hay un paquete privado publicado) — es el mismo modelo de
+reutilización manual que el resto de Misi, documentado así a propósito
+mientras el framework en sí sigue sin depender de Composer para
+funcionar (ver `docs/architecture.md`, "Estrategia de autoloading").

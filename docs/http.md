@@ -22,6 +22,9 @@ $request->file('avatar');    // estructura de $_FILES, o null si no se subió na
 $request->session('user_id'); // atajo de Misi\Support\Session::get()
 $request->ip();
 $request->isJson();
+$request->isSecure();        // true en HTTPS real, o detrás de un proxy
+                              // TLS que informa X-Forwarded-Proto: https
+                              // (ej. Cloudflare en InfinityFree — Fase 15)
 ```
 
 `all()` combina query string y body: si el `Content-Type` es
@@ -38,6 +41,30 @@ salvo para HTML plano:
 return new Response('<h1>Hola</h1>');
 return new Response('No encontrado', 404);
 ```
+
+```php
+$response->header('X-Custom', 'valor');
+$response->hasHeader('X-Custom'); // true — usado internamente por
+                                   // Application para no pisar una
+                                   // cabecera que el controlador ya fijó
+```
+
+### Cabeceras de seguridad por defecto (Fase 15)
+
+`Application::run()` aplica automáticamente, a **toda** respuesta (éxito
+y error, HTML y JSON), sin que el controlador tenga que hacer nada:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Strict-Transport-Security` (solo si `$request->isSecure()`)
+
+Un controlador puede sobrescribir cualquiera de estas llamando a
+`$response->header(...)` él mismo antes de devolver la respuesta — los
+defaults solo se aplican si la cabecera todavía no está presente. No hay
+`Content-Security-Policy` por defecto: no existe un valor razonable que
+no rompa un proyecto con `<script>` inline sin nonce (ver
+`docs/security.md`).
 
 ## JsonResponse
 

@@ -8,6 +8,10 @@ la anterior esté cerrada y aprobada. El criterio de éxito de Misi no es
 
 Leyenda de estado: ✅ Completo · 🟡 Parcial / en progreso · ⬜ Pendiente · 🧊 Congelado (no se implementa salvo necesidad real comprobada)
 
+**Versión actual: `1.0.0`** (Fases 1-15 completas — ver `CHANGELOG.md`).
+Fase 16 en adelante (Business Core) es intencionalmente posterior a este
+freeze, ver la fase correspondiente más abajo.
+
 ---
 
 ## Fase 0 — Diseño
@@ -475,44 +479,179 @@ prueba, todos exitosos.
 **Objetivo:** revisión transversal antes de considerar Misi listo para
 uso intensivo en proyectos de clientes.
 
-- [ ] Auditoría de seguridad completa (checklist de `docs/security.md`
-      aplicado a todo el código)
-- [ ] Revisión de manejo de errores en todos los módulos
-- [ ] Revisión de rendimiento básico (queries N+1 evitadas manualmente,
-      uso correcto de índices en migraciones)
-- [ ] Verificación de compatibilidad real en un hosting compartido barato
-      (FTP + MySQL + PHP, sin SSH si es posible)
-- [ ] Documentación completa y consistente en `docs/`
-- [ ] Congelar versión `1.0.0` (ver Versionado más abajo)
+- [x] **Auditoría de seguridad completa** (checklist de `docs/security.md`
+      aplicado a todo el código):
+      - [x] Búsqueda exhaustiva de SQL concatenado en todo el proyecto:
+            sin hallazgos
+      - [x] Cabeceras de seguridad HTTP (`X-Content-Type-Options`,
+            `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`
+            condicional a HTTPS real — incluso detrás de un proxy TLS
+            como Cloudflare/InfinityFree, vía `X-Forwarded-Proto`)
+            aplicadas por defecto a toda respuesta en
+            `Application::applyDefaultSecurityHeaders()`. `Content-Security-Policy`
+            deliberadamente fuera (sin default seguro posible sin
+            conocer el frontend de cada proyecto — ver `docs/security.md`)
+      - [x] Validación de identificadores (nombre de tabla/columna) en
+            `Database::insert()`/`update()`/`delete()` como defensa en
+            profundidad — verificado con un intento real de inyección
+            contra MariaDB
+      - [x] XSS revisado en `examples/demo-app` (único HTML dinámico
+            real del proyecto): sin hallazgos
+      - [x] Decisión ya documentada de no implementar rate limiting de
+            login ni 2FA todavía (sin necesidad real comprobada)
+      - Detalle completo: sección "Auditoría Fase 15" en `docs/security.md`
+- [x] **Revisión de manejo de errores en todos los módulos**: revisado
+      `Application::handleException()` y cada controlador de `app/` y
+      `examples/demo-app/app/` — todos usan las excepciones propias de
+      Fase 9, ninguno atrapa/silencia errores ni expone detalles internos
+- [x] **Revisión de rendimiento básico**:
+      - [x] `role_user` no tenía índice utilizable para el filtro por
+            `user_id` que hace `Auth::can()` en cada verificación de
+            permiso (solo la `PRIMARY KEY` compuesta `(role_id, user_id)`,
+            inútil por la regla de prefijo izquierdo). Corregido con
+            migración aditiva `004_add_role_user_user_id_index.php`
+            (y su equivalente en `examples/demo-app`), verificado con
+            `SHOW INDEX` contra MariaDB real
+      - [x] Resto de tablas (`uploads`, `customers`, `orders`) revisadas:
+            sin el mismo patrón — sus filtros ya están cubiertos por
+            `PRIMARY KEY` o foreign keys (indexadas automáticamente por
+            InnoDB)
+      - [x] Hallazgo adicional no relacionado con índices: `ext-mbstring`
+            (usada por `Validator` para `mb_strlen()`) no estaba declarada
+            ni verificada — sin ella, cualquier validación de string
+            fallaba con un error no controlado. Corregido: declarada en
+            `composer.json` y verificada en tiempo de ejecución al
+            arrancar (`bootstrap/autoload.php`, proyecto raíz y
+            `examples/demo-app`), con mensaje claro en vez de un 500
+            críptico. Reproducido y verificado el fix contra un servidor
+            real sin la extensión y luego con ella instalada.
+- [x] **Verificación de compatibilidad real en un hosting compartido
+      barato sin SSH — InfinityFree**:
+      - [x] Auditoría de funciones no soportadas (`exec`/`shell_exec`/
+            `proc_open`/`system`/`popen`): ninguna se usa en el camino
+            de ejecución de producción (`passthru()` solo existe en
+            `bin/biz serve`, exclusivo de desarrollo local)
+      - [x] Estructura de despliegue documentada: `htdocs/` = contenido
+            de `public/`, resto del framework fuera del webroot (sin
+            necesitar reapuntar el document root, que InfinityFree no
+            permite)
+      - [x] `deploy/infinityfree/htdocs.htaccess`: front controller +
+            redirect HTTPS + bloqueo de dotfiles + cabeceras de
+            seguridad básicas
+      - [x] `deploy/infinityfree/web-runner.php`: migraciones/seeds sin
+            SSH (InfinityFree no da acceso remoto a MySQL ni SSH),
+            reutilizando `Migrator`/`Seeder` ya probados, protegido por
+            `DEPLOY_TOKEN` (`hash_equals`, 404 genérico si falla)
+      - [x] `docs/deployment-infinityfree.md`: guía completa (carpetas,
+            `.env` de producción, límites reales del plan gratuito —
+            sin cron de sistema, sin `mail()`, límite de inodes/hits —
+            y checklist de verificación post-despliegue)
+      - [x] `.env.example` actualizado con `DEPLOY_TOKEN`
+      - [ ] Verificación real contra una cuenta InfinityFree en vivo
+            (lo anterior es diseño + código + documentación; falta la
+            prueba de punta a punta en un hosting real antes de dar
+            esta fase por completamente cerrada — igual que las demás
+            fases, que se probaron contra MariaDB real, no solo en
+            teoría)
+- [x] Documentación completa y consistente en `docs/`: revisada la
+      totalidad de `docs/*.md` contra el código actual — corregidos
+      `docs/http.md` (faltaba `Request::isSecure()`/cabeceras por
+      defecto), `docs/database.md` (faltaba la validación de
+      identificadores), `docs/authorization.md` (faltaba el índice
+      nuevo), `docs/cli.md` (faltaba el cruce con el web-runner de
+      InfinityFree), `docs/architecture.md` (dependencias, riesgos
+      técnicos, sección 18.1 nueva apuntando a la auditoría). Verificado
+      además que no hay enlaces rotos entre docs ni docs huérfanos.
+      `README.md`: corregida una omisión real (la Fase 11 — CLI no
+      aparecía en "Estado actual" pese a estar completa) y agregado
+      `deploy/` al árbol de estructura del proyecto.
+- [x] **Congelar versión `1.0.0`**: `composer.json` (`"version": "1.0.0"`)
+      y `CHANGELOG.md` creado con el historial completo 0.1.0 → 1.0.0
+      (primera release etiquetada, tal como pide la sección
+      "Versionado" más abajo). Etiquetar el commit correspondiente
+      (`git tag v1.0.0`) queda como paso manual en el repositorio real
+      — este proyecto no tiene `.git` en el entorno donde se hizo este
+      trabajo.
 
-**Estado: ⬜ Pendiente**
+**Nota honesta sobre el único ítem que sigue sin poder cerrarse desde
+acá**: la prueba de punta a punta contra una **cuenta InfinityFree real**
+no se hizo — no hay forma de crear una cuenta de hosting real desde este
+entorno. Lo que sí se hizo (y es lo máximo verificable sin esa cuenta) es
+simular su estructura exacta (`htdocs/` separado del resto) contra
+MariaDB real, con resultado exitoso (ver sección de InfinityFree arriba).
+`1.0.0` se congela con esta salvedad explícita, no oculta: el código, el
+diseño y la documentación de compatibilidad están completos y probados
+todo lo posible desde aquí; la verificación en un hosting real queda
+como acción pendiente de quien tenga la cuenta.
+
+**Estado: ✅ Completo** (con la salvedad de la prueba en InfinityFree
+real, documentada arriba y en `docs/deployment-infinityfree.md`).
 
 ---
 
-## Fase 16 — Business Core *(post-1.0, no antes)*
+## Fase 16 — Business Core
 
 **Objetivo:** capa reutilizable de funcionalidades administrativas comunes
 a la mayoría de pequeños negocios, construida **sobre** el framework, nunca
-mezclada con él.
+mezclada con él. Vive en `business/`, namespace `Misi\Business\`.
 
-Candidatos (se agregan solo cuando 2+ proyectos reales los necesiten, no
-antes — es el mismo principio que gobierna todo el roadmap):
+**Primer corte (en progreso)** — basado en dos proyectos reales:
+`examples/demo-app` (taller de bordados, en producción/demo) y un
+segundo proyecto de tienda/retail (en planificación, con pedidos de
+línea de detalle).
 
-- [ ] `Users` (usuarios del sistema, distinto de "clientes" del negocio)
-- [ ] `Businesses` (soporte multi-negocio / multi-tenant a nivel de fila)
-- [ ] `Customers`
-- [ ] `Products` / `Categories`
-- [ ] `Orders`
-- [ ] `Payments`
-- [ ] `Deliveries`
-- [ ] `Files` (metadata de archivos asociados a entidades de negocio)
-- [ ] `Reports` (reportes básicos reutilizables: ventas, inventario, etc.)
+- [x] `Customers`: `business/Customers/CustomerRepository.php` +
+      `business/migrations/001_create_customers_table.php`. Movido tal
+      cual desde `examples/demo-app` — forma idéntica en ambos proyectos
+      reales (nombre, email, teléfono), sin ningún campo específico de
+      negocio. El caso de libro para esta capa.
+- [ ] `Orders`: **deliberadamente NO generalizado todavía**, aunque
+      ambos proyectos "tienen pedidos". La forma diverge demasiado para
+      generalizar de forma responsable con la evidencia actual:
+      - demo-app: pedido = una descripción de texto libre + imagen de
+        referencia + estado con vocabulario propio del taller
+        (`pendiente/en_proceso/listo/entregado`).
+      - retail (planeado): pedido = líneas de detalle (producto,
+        cantidad, precio por línea), total calculado, sin imagen de
+        referencia, vocabulario de estado probablemente distinto
+        (pago/envío en vez de manufactura).
+      - Lo único genuinamente común es "un pedido pertenece a un
+        cliente y tiene un estado" — generalizar solo eso ahorraría
+        muy poco tiempo real, y forzar más (líneas de detalle
+        opcionales, vocabulario de estado configurable) sería diseñar
+        a partir de un proyecto que todavía no tiene una sola línea de
+        código, no de dos implementaciones reales comparables.
+      - **Se retoma cuando el proyecto retail tenga una implementación
+        real** de `orders`/`order_items` — ahí sí habrá dos formas
+        concretas que comparar, en vez de una real y una supuesta.
+- [ ] `Users` (distinto de "clientes" del negocio) — sin segunda
+      necesidad real confirmada todavía; `examples/demo-app` ya tiene
+      usuarios vía Auth (Fase 6), no está claro que un "Business Core
+      User" sea algo distinto de eso.
+- [ ] `Businesses` (multi-tenant) — 🧊 **deliberadamente congelado**:
+      ninguno de los dos proyectos reales necesita que varios negocios
+      compartan un mismo despliegue (cada proyecto de cliente es su
+      propio despliegue independiente, según el modelo de negocio
+      descrito — ver la introducción del proyecto). Agregar
+      `business_id` ahora sería diseñar para un escenario SaaS que no
+      existe todavía. Se revisita si algún proyecto real lo pide.
+- [ ] `Products` / `Categories` — solo el proyecto retail los necesita
+      (y sigue en planificación). Con un solo caso, ni siquiera
+      planeado en código todavía, no hay evidencia suficiente para
+      generalizar — quedan como parte específica de ese proyecto hasta
+      que un segundo proyecto real también necesite catálogo/inventario.
+- [ ] `Payments`, `Deliveries`, `Files`, `Reports` — sin evidencia de
+      ningún proyecto real todavía.
 
-**Estrategia multi-tenant:** el framework solo provee las herramientas
-(Database, Auth). La lógica de `business_id` y el aislamiento de datos
-entre negocios pertenece enteramente al Business Core, no al framework.
+**Nota sobre `examples/demo-app`:** su `CustomerController` sigue con
+las queries propias, no fue migrado a usar
+`business/Customers/CustomerRepository.php`. Es una decisión deliberada
+para no arriesgar el demo ya entregado y probado — adoptar Business Core
+ahí queda como mejora futura opcional, no requisito de este corte.
 
-**Estado: ⬜ Pendiente / futuro**
+**Estado: 🟡 Parcial** — `Customers` completo y probado contra MariaDB
+real; el resto explícitamente diferido con la razón documentada arriba,
+no simplemente "no hecho".
 
 ---
 
@@ -569,10 +708,13 @@ Semantic Versioning (`MAJOR.MINOR.PATCH`):
 - `0.9.0` → Fase 11 completa (CLI)
 - `0.10.0` → Fase 12 completa (Generadores)
 - `0.11.0` → Fase 13 completa (UI utilities)
-- `0.12.0` → Fase 14 completa (Demo Application) ← **estado actual**
-- `1.0.0` → Fase 15 (Hardening) completa — API interna estable
+- `0.12.0` → Fase 14 completa (Demo Application)
+- `1.0.0` → Fase 15 (Hardening) completa — API interna estable ←
+  **estado actual**, con la salvedad documentada arriba (prueba en
+  cuenta InfinityFree real pendiente, todo lo demás completo y probado)
 
-Mantener `CHANGELOG.md` a partir de la primera release etiquetada.
+`CHANGELOG.md` creado con esta release (primera release etiquetada) —
+a mantener desde ahora con cada cambio relevante.
 
 ## Convención de commits
 

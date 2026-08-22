@@ -44,6 +44,9 @@ Para saber qué está construido, qué sigue y en qué orden, ver
 ✅ **Fase 10 — Modules**: infraestructura de módulos (`modules/NombreModulo/`,
    descubrimiento automático, rutas + migraciones propias). Módulo de
    referencia funcional en `modules/Example/`. Ver `docs/modules.md`.
+✅ **Fase 11 — CLI** (`bin/biz`): `serve`, `migrate`/`migrate:status`/
+   `migrate:rollback`, `db:seed`, `help` — sin dependencias externas
+   (nada de Symfony Console). Ver `docs/cli.md`.
 ✅ **Fase 12 — Generadores**: `make:controller/model/service/repository/module`,
    plantillas simples en `resources/stubs/`, sin sobrescritura silenciosa.
    Ver `docs/cli.md`.
@@ -54,7 +57,31 @@ Para saber qué está construido, qué sigue y en qué orden, ver
    bordados completo (login, CRUD de clientes/pedidos, upload, permisos,
    módulo propio) reutilizando el `framework/` de este proyecto por ruta
    relativa, sin copiarlo. Ver `examples/demo-app/README.md`.
+✅ **Fase 15 — Hardening**: completa. Auditoría de seguridad (cabeceras
+   HTTP por defecto, validación de identificadores en `Database`,
+   revisión de XSS), revisión de manejo de errores, revisión de
+   rendimiento (índice faltante en `role_user` corregido, dependencia
+   `ext-mbstring` declarada y verificada), documentación revisada de
+   punta a punta, y compatibilidad con hosting compartido sin SSH
+   (InfinityFree) con herramientas de despliegue listas. Ver
+   [`docs/security.md`](docs/security.md) sección "Auditoría Fase 15",
+   [`docs/deployment-infinityfree.md`](docs/deployment-infinityfree.md)
+   y [`CHANGELOG.md`](CHANGELOG.md). **Salvedad honesta**: la
+   verificación en hosting sin SSH se probó simulando la estructura
+   exacta de InfinityFree contra MariaDB real, pero no contra una
+   cuenta InfinityFree real (no hay forma de crear una desde aquí) —
+   queda como acción pendiente antes de confiar un despliegue real sin
+   supervisión.
 ⬜ Resto de fases: ver `ROADMAP.md`.
+
+**Versión actual: `1.0.0`** — ver [`CHANGELOG.md`](CHANGELOG.md).
+
+🟡 **Fase 16 — Business Core**: en progreso. `Customers` completo
+   (`business/Customers/CustomerRepository.php`), basado en dos
+   proyectos reales con la misma forma. `Orders` y multi-tenant
+   deliberadamente diferidos — no hay evidencia real suficiente
+   todavía (ver [`docs/business-core.md`](docs/business-core.md) y
+   `ROADMAP.md`).
 
 Esto es una **base ejecutable**, no un mockup: el servidor de desarrollo
 levanta, enruta y responde JSON/HTML reales (ver sección "Probarlo ahora").
@@ -269,6 +296,8 @@ misi/
 ├── database/
 │   ├── migrations/          # users, roles/permissions, uploads (ejemplos)
 │   └── seeders/             # DatabaseSeeder.php (ejemplo)
+├── deploy/
+│   └── infinityfree/        # .htaccess + web-runner.php para hosting sin SSH (ver docs/deployment-infinityfree.md)
 ├── docs/                    # Documentación técnica
 ├── framework/                # El framework Misi en sí (namespace Misi\)
 │   ├── Core/                 # Application (orquestador)

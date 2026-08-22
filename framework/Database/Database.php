@@ -91,6 +91,9 @@ final class Database
     /** @param array<string, mixed> $data */
     public function insert(string $table, array $data): string
     {
+        $this->assertSafeIdentifier($table);
+        array_map($this->assertSafeIdentifier(...), array_keys($data));
+
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
@@ -105,6 +108,9 @@ final class Database
      */
     public function update(string $table, array $data, string $where, array $whereBindings = []): int
     {
+        $this->assertSafeIdentifier($table);
+        array_map($this->assertSafeIdentifier(...), array_keys($data));
+
         $set = implode(', ', array_map(fn ($col) => "{$col} = ?", array_keys($data)));
         $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
 
@@ -116,8 +122,41 @@ final class Database
     /** @param array<int|string, mixed> $whereBindings */
     public function delete(string $table, string $where, array $whereBindings = []): int
     {
+        $this->assertSafeIdentifier($table);
+
         $sql = "DELETE FROM {$table} WHERE {$where}";
         return $this->query($sql, $whereBindings)->rowCount();
+    }
+
+    /**
+     * Fase 15 (auditoría de seguridad): $table y las claves de $data en
+     * insert()/update() se interpolan directamente en el SQL (no pueden
+     * ir como binding preparado — PDO no soporta parametrizar
+     * identificadores, solo valores). Esto es seguro mientras el nombre
+     * de tabla/columna lo escribe la desarrolladora en su propio código
+     * (el caso normal). Esta validación es una segunda barrera para el
+     * caso en que, por error, alguien construya $data a partir de input
+     * no filtrado (ej. `$db->insert('customers', $request->all())` sin
+     * pasar antes por Validator) — un nombre de columna con SQL
+     * incrustado no rompe la query, se rechaza con DatabaseException
+     * antes de tocar la base de datos.
+     *
+     * `where` en update()/delete() queda fuera a propósito: ahí
+     * siempre viaja SQL real (ej. "id = ? AND business_id = ?"), no un
+     * identificador simple — no hay forma de "sanearlo" sin convertirlo
+     * en un mini query builder, que es exactamente lo que Fase 4/19
+     * decidió no construir todavía. `where` sigue siendo responsabilidad
+     * de quien la escribe, igual que cualquier SQL crudo del proyecto.
+     */
+    private function assertSafeIdentifier(string $identifier): string
+    {
+        if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier) !== 1) {
+            throw new DatabaseException(
+                "Nombre de tabla o columna inválido: '{$identifier}'."
+            );
+        }
+
+        return $identifier;
     }
 
     public function beginTransaction(): void

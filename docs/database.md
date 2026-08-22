@@ -19,7 +19,15 @@ $statement = $db->query('SELECT COUNT(*) AS total FROM customers'); // PDOStatem
 ```
 
 100% prepared statements — nunca se concatena input del usuario en el SQL,
-en ningún método.
+en ningún método. `$table` y las claves de `$data` en `insert()`/`update()`/
+`delete()` sí se interpolan directamente (PDO no permite parametrizar
+identificadores, solo valores), pero se validan contra
+`^[a-zA-Z_][a-zA-Z0-9_]*$` antes — un nombre de columna/tabla inválido
+lanza `DatabaseException` en vez de llegar a ejecutarse (Fase 15, ver
+`docs/security.md`). `where` en `update()`/`delete()` queda fuera de esa
+validación a propósito: ahí siempre viaja SQL real (`'id = ? AND status = ?'`),
+no un identificador simple — sigue siendo responsabilidad de quien la
+escribe, igual que cualquier SQL crudo del proyecto.
 
 ## Transacciones
 
@@ -66,6 +74,13 @@ php bin/biz migrate:rollback    # revierte el último lote completo
 ```
 
 La tabla `migrations` (columna `batch`) se crea sola en el primer uso.
+
+Si un proyecto necesita agregar un índice (u otro cambio de esquema) a
+una tabla que ya tiene datos en producción, se hace con una migración
+nueva y aditiva — nunca editando una migración que ya corrió. Ejemplo
+real: `database/migrations/004_add_role_user_user_id_index.php`
+(Fase 15, agregó un índice que faltaba sin tocar
+`002_create_roles_and_permissions.php`).
 
 ## Seeders
 

@@ -280,7 +280,47 @@ final class Application
             $response = $this->handleException($e);
         }
 
+        $this->applyDefaultSecurityHeaders($response, $request);
         $response->send();
+    }
+
+    /**
+     * Cabeceras de seguridad que docs/security.md marcaba como
+     * pendientes hasta esta fase ("no tiene sentido configurarlas
+     * mientras la superficie de rutas/vistas seguía cambiando fase a
+     * fase"). Se aplican en un único lugar a TODA respuesta (éxito y
+     * error, HTML y JSON) para que ningún controlador tenga que
+     * acordarse de ponerlas.
+     *
+     * `hasHeader()` evita pisar una cabecera que el controlador ya fijó
+     * a propósito — estos son defaults, no valores forzados.
+     *
+     * Deliberadamente NO incluye Content-Security-Policy: un CSP
+     * genérico razonable rompería cualquier proyecto con <script>
+     * inline sin nonce (el propio examples/demo-app los usa
+     * extensivamente, ver resources/views/app.php) — el valor correcto
+     * depende de cada frontend, así que no hay un default seguro que no
+     * sea "romper cosas" o "no proteger nada". Cada proyecto que lo
+     * necesite lo agrega en su propio middleware/controlador según su
+     * propia superficie de scripts/estilos.
+     */
+    private function applyDefaultSecurityHeaders(Response $response, Request $request): void
+    {
+        $defaults = [
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'Referrer-Policy' => 'strict-origin-when-cross-origin',
+        ];
+
+        foreach ($defaults as $name => $value) {
+            if (!$response->hasHeader($name)) {
+                $response->header($name, $value);
+            }
+        }
+
+        if ($request->isSecure() && !$response->hasHeader('Strict-Transport-Security')) {
+            $response->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
     }
 
     private function handleException(Throwable $e): Response

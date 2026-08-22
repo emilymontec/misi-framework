@@ -25,6 +25,17 @@ class Response
         return $this;
     }
 
+    /**
+     * Usado por Application::applyDefaultSecurityHeaders() (Fase 15)
+     * para no pisar una cabecera que el controlador ya fijó a propósito
+     * (ej. un controlador que necesita permitir un iframe específico y
+     * ya puso su propio X-Frame-Options).
+     */
+    public function hasHeader(string $name): bool
+    {
+        return array_key_exists($name, $this->headers);
+    }
+
     public function status(int $code): static
     {
         $this->statusCode = $code;
