@@ -74,14 +74,20 @@ Para saber qué está construido, qué sigue y en qué orden, ver
    supervisión.
 ⬜ Resto de fases: ver `ROADMAP.md`.
 
-**Versión actual: `1.0.0`** — ver [`CHANGELOG.md`](CHANGELOG.md).
+**Versión actual: `1.1.0`** — ver [`CHANGELOG.md`](CHANGELOG.md).
 
-🟡 **Fase 16 — Business Core**: en progreso. `Customers` completo
-   (`business/Customers/CustomerRepository.php`), basado en dos
-   proyectos reales con la misma forma. `Orders` y multi-tenant
-   deliberadamente diferidos — no hay evidencia real suficiente
-   todavía (ver [`docs/business-core.md`](docs/business-core.md) y
-   `ROADMAP.md`).
+🟡 **Fase 16 — Business Core**: en progreso. `Customers` y
+   `Products`/`Categories` completos
+   (`business/Customers/`, `business/Products/`), esta última por
+   decisión explícita del dueño del proyecto (catálogo/inventario es
+   independiente del tipo de producto). `Orders` y multi-tenant siguen
+   deliberadamente diferidos — ver
+   [`docs/business-core.md`](docs/business-core.md) y `ROADMAP.md`.
+
+🟡 **Fase 17 — Modules de negocio concretos**: `Modules\Catalog`
+   completo (panel admin de catálogo/inventario sobre Business Core,
+   con RBAC). `Modules\Ropa`/`Modules\Bordados` siguen sin evidencia
+   real suficiente (0 y 1 proyecto respectivamente).
 
 Esto es una **base ejecutable**, no un mockup: el servidor de desarrollo
 levanta, enruta y responde JSON/HTML reales (ver sección "Probarlo ahora").

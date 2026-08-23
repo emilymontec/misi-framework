@@ -635,11 +635,19 @@ línea de detalle).
       descrito — ver la introducción del proyecto). Agregar
       `business_id` ahora sería diseñar para un escenario SaaS que no
       existe todavía. Se revisita si algún proyecto real lo pide.
-- [ ] `Products` / `Categories` — solo el proyecto retail los necesita
-      (y sigue en planificación). Con un solo caso, ni siquiera
-      planeado en código todavía, no hay evidencia suficiente para
-      generalizar — quedan como parte específica de ese proyecto hasta
-      que un segundo proyecto real también necesite catálogo/inventario.
+- [x] `Products` / `Categories` — **decisión explícita del dueño del
+      proyecto** (no la regla automática de "2+ proyectos"): aunque solo
+      el proyecto retail (en planificación) los necesita hoy, catálogo +
+      inventario + acceso admin es independiente del tipo de producto
+      que se venda — a diferencia de `Modules\Ropa` (talla/color, sí
+      específico), esta base la va a necesitar cualquier proyecto futuro
+      que venda productos. `business/Products/{ProductRepository,CategoryRepository}.php`
+      + `business/migrations/002_.../003_...`. Stock simple (un número
+      por producto, sin variantes), ajuste atómico
+      (`ProductRepository::adjustStock()`, previene condiciones de
+      carrera y stock negativo con un único UPDATE condicionado, no
+      leer-luego-escribir). Probado contra MariaDB real: CRUD, JOIN con
+      categoría, ajuste válido/insuficiente, SKU duplicado.
 - [ ] `Payments`, `Deliveries`, `Files`, `Reports` — sin evidencia de
       ningún proyecto real todavía.
 
@@ -660,14 +668,28 @@ no simplemente "no hecho".
 Ejemplos de módulos verticales que se construirán sobre el Business Core
 conforme aparezcan proyectos reales que los necesiten:
 
-- [ ] `Modules\Inventory` — inventario especializado
-- [ ] `Modules\Ropa` — catálogo/variantes (talla, color) para tiendas de ropa
-- [ ] `Modules\Bordados` — pedidos personalizados, tiempos de producción
+- [x] `Modules\Catalog` — catálogo + inventario + acceso admin,
+      **deliberadamente genérico** (no específico de un tipo de
+      producto, a diferencia de `Ropa`/`Bordados` más abajo). Construido
+      con la información concreta del segundo proyecto real (tienda/
+      retail): stock simple (un número por producto, sin variantes) y
+      panel admin con RBAC ya existente (Fase 6). Sin migraciones
+      propias — las tablas (`categories`, `products`) viven en Business
+      Core (`business/migrations/`); el módulo solo agrega rutas +
+      controladores + panel HTML. Ver `docs/business-core.md`.
+- [ ] `Modules\Inventory` — evaluar si sigue haciendo falta como módulo
+      aparte una vez que un proyecto real use `Modules\Catalog`; podría
+      no ser necesario si el ajuste de stock de Catalog alcanza.
+- [ ] `Modules\Ropa` — catálogo/variantes (talla, color) para tiendas de
+      ropa — sigue sin un solo proyecto real de ropa, no se construye
+      todavía
+- [ ] `Modules\Bordados` — pedidos personalizados, tiempos de
+      producción — solo `examples/demo-app` es de este tipo (1 caso, no 2)
 - [ ] (otros según se detecten necesidades reales de clientes)
 
-**Estado: ⬜ Pendiente / futuro** — este es el nivel donde el "ahorro de
-tiempo" del framework se vuelve más visible: cada módulo nuevo reutiliza
-Framework + Business Core casi por completo.
+**Estado: 🟡 Parcial** — `Catalog` completo y probado contra MariaDB
+real (CRUD de productos/categorías, ajuste atómico de stock, RBAC).
+`Ropa`/`Bordados` siguen deliberadamente sin evidencia suficiente.
 
 ---
 

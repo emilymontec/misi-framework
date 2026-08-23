@@ -23,7 +23,7 @@ final class Router
     /** @var array<int, Route> */
     private array $routes = [];
 
-    /** @var array<string, callable(Request, callable): (Response|null)> */
+    /** @var array<string, callable(Request, callable): Response> */
     private array $middlewareAliases = [];
 
     public function get(string $uri, mixed $handler, array $middleware = []): void
@@ -99,7 +99,21 @@ final class Router
             $middleware = $this->middlewareAliases[$alias]
                 ?? throw new \RuntimeException("Middleware no registrado: {$alias}");
 
-            $next = fn (Request $request): Response => $middleware($request, $next) ?? $core($request);
+            // Contrato (ver docs/routing.md "Middleware"): un middleware
+            // SIEMPRE debe devolver un Response propio (para cortar la
+            // cadena) o el resultado de `return $next($request)` (para
+            // continuar). No existe un tercer caso "null = continuar".
+            //
+            // Antes esta línea tenía `?? $core($request)`: si un
+            // middleware olvidaba el `return` antes de `$next($request)`
+            // (typo fácil), su valor de retorno implícito era `null`, y
+            // ese `??` saltaba directo al controlador, saltándose
+            // CUALQUIER middleware intermedio entre ese y el handler
+            // (por ejemplo 'csrf'). Ahora, si un middleware no cumple el
+            // contrato, el type hint `: Response` de este closure lanza
+            // un TypeError inmediato y ruidoso en vez de abrir un hueco
+            // de seguridad silencioso.
+            $next = fn (Request $request): Response => $middleware($request, $next);
         }
 
         return $next($request);

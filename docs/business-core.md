@@ -95,9 +95,75 @@ En resumen, a la fecha de este documento:
   tiene su propio despliegue independiente. Agregar `business_id` ahora
   sería diseñar para un escenario SaaS que todavía no existe.
 - **`Products`, `Payments`, `Deliveries`, `Files`, `Reports`**: sin
-  segunda necesidad real confirmada.
+  segunda necesidad real confirmada — excepto `Products`, que si está
+  construido (ver más abajo), por una decisión explícita, no por la
+  regla automática.
 
-## Cómo se descubre (migraciones)
+## `Products` / `Categories`
+
+A diferencia de `Customers` (2+ proyectos reales con la misma forma),
+esto entró por una decisión explícita del dueño del proyecto, no por la
+regla automática: catálogo + inventario + acceso admin es
+**independiente del tipo de producto** que se venda — a diferencia de
+"Ropa" (talla/color) o "Bordados" (producción a medida), que sí son
+específicos de un vertical y siguen sin construirse por falta de
+evidencia. Cualquier proyecto futuro que venda productos física o
+digitalmente va a necesitar esta base tal cual.
+
+```php
+use Misi\Business\Products\CategoryRepository;
+use Misi\Business\Products\ProductRepository;
+
+$categories = new CategoryRepository(app()->database());
+$products = new ProductRepository(app()->database());
+
+$products->all();              // incluye category_name (LEFT JOIN)
+$products->findOrFail(5);
+$products->create($data);      // $data ya validado con $products->rulesForCreate()
+$products->update(5, $data);
+$products->delete(5);
+
+// Ajuste de stock: atómico, nunca deja stock_quantity en negativo.
+// $delta positivo = entrada, negativo = salida/venta.
+$products->adjustStock(5, -3);
+// Lanza Misi\Business\Products\InsufficientStockException (422) si el
+// ajuste dejaría el stock en negativo.
+```
+
+Stock **simple**: un número por producto, sin variantes de talla/color.
+Es una decisión deliberada de alcance para este primer corte, no una
+limitación técnica — se agregan variantes el día que un proyecto real
+las necesite (probablemente junto con `Modules\Ropa`).
+
+Migraciones: `business/migrations/002_create_categories_table.php` y
+`003_create_products_table.php`. `products.category_id` es
+`ON DELETE SET NULL`: borrar una categoría nunca borra ni bloquea el
+borrado de sus productos.
+
+## El módulo `Modules\Catalog` (Fase 17)
+
+Business Core (`business/Products/`) es la capa de datos —
+framework-agnóstica, sin rutas ni HTML. `modules/Catalog/` es la capa
+de acceso sobre esos datos: rutas protegidas por sesión, permisos
+(`categories.manage`, `products.manage`, `inventory.manage` — via
+`Auth::can()`, Fase 6) y un panel HTML de administración
+(`GET /modules/catalog/panel`) construido con el kit de UI de la Fase
+13 (`public/css/misi.css` + `public/js/api.js`/`ui.js`), sin motor de
+plantillas ni frameworks de frontend.
+
+Es exactamente el patrón de capas que describe la introducción del
+proyecto: Framework (Database, Validator, Auth) → Business Core
+(`ProductRepository`) → Module (`Modules\Catalog`, rutas + UI) →
+Application (el proyecto de un cliente real, que copia `business/` y
+`modules/Catalog/` y los usa tal cual, o los adapta).
+
+Un proyecto que use este módulo necesita sembrar los tres permisos
+(`categories.manage`, `products.manage`, `inventory.manage`) y
+asignarlos a los roles que correspondan en su propio `DatabaseSeeder`
+— el módulo no siembra nada por sí mismo, igual que
+`examples/demo-app` siembra `orders.manage` en el suyo.
+
+
 
 `bin/biz` (y su equivalente para hosting sin SSH,
 `deploy/infinityfree/web-runner.php`) revisan si existe

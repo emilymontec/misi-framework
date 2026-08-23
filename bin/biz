@@ -256,6 +256,8 @@ function dispatchMake(string $command, ?string $name, string $basePath): void
         fail("Uso: php bin/biz {$command} Nombre");
     }
 
+    assertSafeGeneratorName($name);
+
     match ($command) {
         'make:controller' => runMakeController($basePath, $name),
         'make:model' => runMakeModel($basePath, $name),
@@ -421,6 +423,26 @@ function writeGeneratedFile(string $path, string $content): void
 
     file_put_contents($path, $content);
     echo "Creado: {$path}\n";
+}
+
+/**
+ * Rechaza nombres que podrían escapar del directorio destino del
+ * generador (`../`, rutas absolutas, byte nulo). Los generadores
+ * (make:controller, make:module, etc.) construyen la ruta del archivo
+ * a partir de este nombre; sin esta validación, un nombre como
+ * "../../../etc/algo" terminaría escribiendo fuera del proyecto.
+ */
+function assertSafeGeneratorName(string $name): void
+{
+    if (str_contains($name, "\0")) {
+        fail('Nombre inválido: contiene un byte nulo.');
+    }
+
+    $normalized = str_replace('\\', '/', $name);
+
+    if (str_starts_with($normalized, '/') || preg_match('#(^|/)\.\.(/|$)#', $normalized) === 1) {
+        fail("Nombre inválido: \"{$name}\" no puede contener \"..\" ni ser una ruta absoluta.");
+    }
 }
 
 /** PascalCase a partir de snake_case, kebab-case o texto ya en PascalCase. */

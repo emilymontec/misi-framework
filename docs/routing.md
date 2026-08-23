@@ -72,6 +72,22 @@ Un middleware recibe el `Request` y un `$next` callable; puede:
 - devolver un `Response` propio para cortar la cadena (ej. un 401/403), o
 - llamar a `$next($request)` y devolver su resultado para continuar.
 
+**No existe un tercer caso.** Un middleware SIEMPRE debe terminar en
+`return` de una de esas dos formas. Si olvidas el `return` antes de
+`$next($request)`, el Router lo detecta y falla con un `TypeError`
+explícito (nunca deja pasar la petición saltándose el resto de la
+cadena en silencio — ver AUDIT_REPORT.md, AUDIT-001):
+
+```php
+// MAL — olvidar el "return" es un error real y fácil de cometer:
+$router->aliasMiddleware('admin', function (Request $request, callable $next) {
+    if (!Auth::can('admin.access')) {
+        return JsonResponse::error('No autorizado.', [], 403);
+    }
+    $next($request); // <- falta "return" aquí: el Router lanzará TypeError
+});
+```
+
 El pipeline se ejecuta en el orden declarado en el array de la ruta.
 
 ## Ruta no encontrada
