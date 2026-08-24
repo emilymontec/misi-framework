@@ -7,6 +7,7 @@ declare(strict_types=1);
  * CLI de Misi.
  *
  * Uso: php bin/biz <comando> [argumentos]
+ *      php bin/biz <grupo> <accion> [argumentos]   (ej. db migrate, make controller Foo)
  *
  * No usa Symfony Console ni ninguna otra dependencia externa: el parseo
  * de $argv y las respuestas de texto plano son simples de resolver a
@@ -19,6 +20,19 @@ declare(strict_types=1);
  * Los generadores (make:controller, make:model, make:service,
  * make:repository, make:module) se agregaron en la Fase 12, a este
  * mismo archivo — no a uno nuevo.
+ *
+ * Integración de CLI profesional (auditoría en docs/cli.md, sección
+ * "Por qué un solo archivo y no un Kernel/Registry"): se evaluó
+ * reconstruir esto como una arquitectura de comandos orientada a
+ * objetos (Command interface + Kernel + Registry, al estilo
+ * Laravel/Symfony). Se descartó a propósito, por la misma razón que ya
+ * estaba documentada aquí desde la Fase 11: para ~20 comandos, esa capa
+ * adicional es sobreingeniería (regla de oro de abstracciones, ver
+ * ROADMAP.md). En su lugar, esta fase agrega sintaxis agrupada
+ * (`db migrate`, `make controller Foo`, `create business`) como azúcar
+ * sintáctico sobre los mismos identificadores planos de siempre —
+ * resolveCommand() normaliza ambas formas a un único punto de entrada,
+ * sin segunda implementación paralela.
  */
 
 require __DIR__ . '/../bootstrap/autoload.php';
@@ -28,8 +42,6 @@ use Misi\Database\Migrator;
 use Misi\Database\Seeder;
 
 $basePath = dirname(__DIR__);
-$command = $argv[1] ?? null;
-$argument = $argv[2] ?? null;
 
 function fail(string $message): never
 {
@@ -37,21 +49,113 @@ function fail(string $message): never
     exit(1);
 }
 
-// 'serve' y 'make:*' no necesitan levantar Application (config, sesión,
-// conexión a DB...) para hacer su trabajo — se resuelven aparte, sin
-// forzar que el proyecto tenga un .env con credenciales válidas solo
-// para generar un archivo.
+/**
+ * Normaliza tanto la sintaxis agrupada nueva (`db migrate`,
+ * `make controller Foo`, `create business catalog`) como la sintaxis
+ * plana ya existente (`migrate`, `make:controller Foo`) a un único
+ * identificador de comando + argumentos restantes. No hay dos caminos
+ * de despacho: todo pasa por aquí antes de llegar al match() principal.
+ *
+ * @param array<int, string> $tokens argv sin el nombre del script (argv[0])
+ * @return array{0: string, 1: array<int, string>}
+ */
+function resolveCommand(array $tokens): array
+{
+    $head = $tokens[0] ?? null;
+
+    if ($head === null || in_array($head, ['help', 'list', '--help', '-h'], true)) {
+        return ['help', array_slice($tokens, 1)];
+    }
+
+    if (in_array($head, ['version', '--version', '-v'], true)) {
+        return ['version', array_slice($tokens, 1)];
+    }
+
+    if ($head === 'run') {
+        // Alias documentado de 'serve' (ver docs/cli.md): la sintaxis
+        // principal de Misi sigue siendo 'serve' (así está documentado
+        // desde la Fase 11 en GUIA_DE_USO.md y docs/cli.md), 'run' solo
+        // existe para quien viene de otros frameworks y lo escribe por
+        // costumbre.
+        return ['serve', array_slice($tokens, 1)];
+    }
+
+    if ($head === 'db') {
+        $sub = $tokens[1] ?? null;
+        $mapped = match ($sub) {
+            'migrate' => 'migrate',
+            'rollback' => 'migrate:rollback',
+            'status' => 'migrate:status',
+            'seed' => 'db:seed',
+            'fresh' => 'db:fresh',
+            default => fail("Uso: php bin/biz db <migrate|rollback|fresh|seed|status>"),
+        };
+
+        return [$mapped, array_slice($tokens, 2)];
+    }
+
+    if ($head === 'make' && isset($tokens[1]) && !str_starts_with($tokens[1], '--')) {
+        return ['make:' . $tokens[1], array_slice($tokens, 2)];
+    }
+
+    if ($head === 'create' && ($tokens[1] ?? null) === 'business') {
+        return ['create:business', array_slice($tokens, 2)];
+    }
+
+    return [$head, array_slice($tokens, 1)];
+}
+
+[$command, $rest] = resolveCommand(array_slice($argv, 1));
+
+// 'serve', 'make:*', 'new', 'create:business' y 'version' no necesitan
+// levantar Application (config, sesión, conexión a DB...) para hacer su
+// trabajo — se resuelven aparte, sin forzar que el proyecto tenga un
+// .env con credenciales válidas solo para generar un archivo, crear un
+// proyecto nuevo o imprimir la versión (ver "Performance" en el .md de
+// integración de CLI: 'version' en particular debe responder al
+// instante, sin inicializar nada).
 if ($command === 'serve') {
-    runServe(array_slice($argv, 2), $basePath);
+    runServe($rest, $basePath);
     exit(0);
 }
 
-if ($command !== null && str_starts_with($command, 'make:')) {
+if ($command === 'version') {
+    runVersion($basePath);
+    exit(0);
+}
+
+if (str_starts_with((string) $command, 'make:')) {
     try {
-        dispatchMake($command, $argument, $basePath);
+        dispatchMake($command, $rest[0] ?? null, $basePath);
     } catch (\Throwable $e) {
         fail('Error: ' . $e->getMessage());
     }
+    exit(0);
+}
+
+if ($command === 'new') {
+    try {
+        runNew($basePath, $rest[0] ?? null, $rest);
+    } catch (\Throwable $e) {
+        fail('Error: ' . $e->getMessage());
+    }
+    exit(0);
+}
+
+if ($command === 'create:business') {
+    try {
+        runCreateBusiness($basePath, $rest[0] ?? null, $rest);
+    } catch (\Throwable $e) {
+        fail('Error: ' . $e->getMessage());
+    }
+    exit(0);
+}
+
+if ($command === 'doctor') {
+    // 'doctor' es un diagnóstico: cada chequeo atrapa sus propios
+    // errores (ver runDoctor) para poder reportar TODOS los problemas
+    // encontrados en una sola corrida, en vez de morir en el primero.
+    runDoctor($basePath);
     exit(0);
 }
 
@@ -60,8 +164,12 @@ try {
         'migrate' => runMigrate(buildMigrator($basePath)),
         'migrate:rollback' => runRollback(buildMigrator($basePath)),
         'migrate:status' => runStatus(buildMigrator($basePath)),
+        'db:fresh' => runFresh(buildMigrator($basePath), $rest),
         'db:seed' => runSeed(new Application($basePath)),
-        null, 'list', 'help', '--help', '-h' => printUsage(),
+        'info' => runInfo($basePath),
+        'route:list' => runRouteList($basePath),
+        'config:list' => runConfigList($basePath),
+        'help' => printUsage(),
         default => fail("Comando desconocido: {$command}\n\n" . usageText()),
     };
 } catch (\Throwable $e) {
@@ -198,6 +306,468 @@ function runServe(array $args, string $basePath): void
     ));
 }
 
+/**
+ * -----------------------------------------------------------------
+ * Salida con color — Fase de integración de CLI profesional
+ * -----------------------------------------------------------------
+ *
+ * Íconos ✓/✗/!/→ con color ANSI cuando el terminal lo soporta (y se
+ * desactiva solo, sin flag, cuando la salida se redirige a un archivo
+ * o pipe — stream_isatty ya resuelve eso sin depender de la extensión
+ * posix, que no está garantizada en todo hosting). Respeta la
+ * convención NO_COLOR (https://no-color.org) para quien la desactive
+ * explícitamente.
+ */
+function supportsColor(): bool
+{
+    static $supports = null;
+
+    if ($supports !== null) {
+        return $supports;
+    }
+
+    if (getenv('NO_COLOR') !== false) {
+        return $supports = false;
+    }
+
+    return $supports = function_exists('stream_isatty') && @stream_isatty(STDOUT);
+}
+
+function colorize(string $text, string $ansiCode): string
+{
+    return supportsColor() ? "\033[{$ansiCode}m{$text}\033[0m" : $text;
+}
+
+function ok(string $text): string
+{
+    return colorize('✓', '32') . ' ' . $text;
+}
+
+function fails(string $text): string
+{
+    return colorize('✗', '31') . ' ' . $text;
+}
+
+function warn(string $text): string
+{
+    return colorize('!', '33') . ' ' . $text;
+}
+
+function tip(string $text): string
+{
+    return colorize('→', '36') . ' ' . $text;
+}
+
+/**
+ * Fuente única de verdad para la versión de Misi: composer.json
+ * ("version"). Nada hardcodeado en otro lugar (regla explícita del .md
+ * de integración de CLI, sección 9).
+ */
+function resolveVersion(string $basePath): string
+{
+    static $cached = null;
+
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $composerPath = $basePath . '/composer.json';
+
+    if (!is_file($composerPath)) {
+        return $cached = '0.0.0';
+    }
+
+    $data = json_decode((string) file_get_contents($composerPath), true);
+    $version = is_array($data) && isset($data['version']) && is_string($data['version'])
+        ? $data['version']
+        : '0.0.0';
+
+    return $cached = $version;
+}
+
+/**
+ * Deliberadamente NO instancia Application: "misi version" debe
+ * responder al instante (regla de performance del .md de integración
+ * de CLI, sección 50), sin leer .env ni configuración.
+ */
+function runVersion(string $basePath): void
+{
+    echo 'Misi Framework ' . resolveVersion($basePath) . "\n";
+}
+
+/**
+ * Diagnóstico del proyecto. Cada chequeo atrapa sus propios errores:
+ * el objetivo es reportar TODOS los problemas encontrados en una sola
+ * corrida (ej. ".env ausente" Y "extensión pdo_mysql faltante" a la
+ * vez), no morir en el primero como haría el resto de los comandos.
+ */
+function runDoctor(string $basePath): void
+{
+    echo "Misi Doctor\n\n";
+
+    $problems = 0;
+
+    // PHP
+    $minPhp = '8.1.0';
+    if (version_compare(PHP_VERSION, $minPhp, '>=')) {
+        echo ok('PHP ' . PHP_VERSION) . "\n";
+    } else {
+        echo fails("PHP " . PHP_VERSION . " (Misi requiere >= {$minPhp})") . "\n";
+        $problems++;
+    }
+
+    // Extensiones requeridas: mbstring (composer.json ext-mbstring) +
+    // pdo/pdo_mysql (Database usa PDO contra MySQL, ver framework/Database/Database.php).
+    foreach (['mbstring', 'pdo', 'pdo_mysql'] as $extension) {
+        if (extension_loaded($extension)) {
+            echo ok("Extensión {$extension}") . "\n";
+        } else {
+            echo fails("Extensión {$extension} no está cargada") . "\n";
+            $problems++;
+        }
+    }
+
+    // .env
+    $envPath = $basePath . '/.env';
+    if (is_file($envPath)) {
+        echo ok('.env presente') . "\n";
+    } else {
+        echo warn('.env no encontrado (copia .env.example a .env y completa tus credenciales)') . "\n";
+        $problems++;
+    }
+
+    // Configuración + Application
+    $app = null;
+    try {
+        $app = new Application($basePath);
+        echo ok('Configuración (config/*.php) carga sin errores') . "\n";
+    } catch (\Throwable $e) {
+        echo fails('Configuración: ' . $e->getMessage()) . "\n";
+        $problems++;
+    }
+
+    // Base de datos
+    if ($app instanceof Application) {
+        try {
+            $app->database()->connection();
+            echo ok('Conexión a base de datos') . "\n";
+        } catch (\Throwable $e) {
+            echo fails('Conexión a base de datos: ' . $e->getMessage()) . "\n";
+            $problems++;
+        }
+    }
+
+    // storage/
+    foreach (['logs', 'cache', 'uploads'] as $sub) {
+        $dir = $basePath . '/storage/' . $sub;
+        if (is_dir($dir) && is_writable($dir)) {
+            echo ok("storage/{$sub} existe y tiene permiso de escritura") . "\n";
+        } else {
+            echo fails("storage/{$sub} no existe o no tiene permiso de escritura") . "\n";
+            $problems++;
+        }
+    }
+
+    echo "\n";
+    echo $problems === 0
+        ? "Todo en orden.\n"
+        : "{$problems} problema(s) encontrado(s) — revisa los ✗ de arriba.\n";
+}
+
+/** Información del proyecto. Nunca imprime credenciales (regla explícita, sección 32). */
+function runInfo(string $basePath): void
+{
+    $app = new Application($basePath);
+
+    $dbConfig = (array) $app->config->get('database', []);
+    $modules = $app->modules();
+
+    echo "Misi Project\n\n";
+    printf("%-13s %s\n", 'Framework:', 'Misi');
+    printf("%-13s %s\n", 'Version:', resolveVersion($basePath));
+    printf("%-13s %s\n", 'Environment:', (string) $app->config->get('app.env', 'production'));
+    printf("%-13s %s\n", 'PHP:', PHP_VERSION);
+    printf(
+        "%-13s %s\n",
+        'Database:',
+        ($dbConfig['connection'] ?? 'mysql') . ' (' . ($dbConfig['database'] !== '' ? $dbConfig['database'] : 'sin configurar') . ')'
+    );
+    printf("%-13s %s\n", 'Debug:', ((bool) $app->config->get('app.debug', false)) ? 'enabled' : 'disabled');
+    printf("%-13s %s\n", 'Modules:', $modules === [] ? '(ninguno)' : implode(', ', array_column($modules, 'name')));
+}
+
+/** Lista las rutas registradas leyendo el Router real — no hay una segunda lista mantenida a mano. */
+function runRouteList(string $basePath): void
+{
+    $app = new Application($basePath);
+    $app->loadRoutes($basePath . '/routes/web.php');
+
+    $routes = $app->router->routes();
+
+    if ($routes === []) {
+        echo "No hay rutas registradas.\n";
+        return;
+    }
+
+    printf("%-8s %-32s %-40s %s\n", 'METHOD', 'URI', 'ACTION', 'MIDDLEWARE');
+
+    foreach ($routes as $route) {
+        $action = is_array($route->handler)
+            ? $route->handler[0] . '@' . $route->handler[1]
+            : 'Closure';
+
+        printf(
+            "%-8s %-32s %-40s %s\n",
+            $route->method,
+            $route->uri,
+            $action,
+            $route->middleware === [] ? '' : implode(',', $route->middleware)
+        );
+    }
+}
+
+/**
+ * Muestra la configuración pública del proyecto, ocultando cualquier
+ * clave que parezca sensible (password/secret/token/key/credential),
+ * sin importar en qué archivo de config/*.php aparezca (regla
+ * explícita, sección 34).
+ */
+function runConfigList(string $basePath): void
+{
+    $app = new Application($basePath);
+
+    foreach ($app->config->all() as $file => $values) {
+        echo "[{$file}]\n";
+        printConfigValue($values, '  ');
+        echo "\n";
+    }
+}
+
+function printConfigValue(mixed $value, string $prefix, string $key = ''): void
+{
+    if (is_array($value)) {
+        foreach ($value as $k => $v) {
+            printConfigValue($v, $prefix, $key === '' ? (string) $k : $key . '.' . $k);
+        }
+        return;
+    }
+
+    $display = looksSensitive($key) ? '••••••••' : (is_bool($value) ? ($value ? 'true' : 'false') : (string) $value);
+    echo "{$prefix}{$key} = {$display}\n";
+}
+
+function looksSensitive(string $key): bool
+{
+    return preg_match('/password|secret|token|api[_-]?key|credential/i', $key) === 1;
+}
+
+/**
+ * "Reinicia" la base de datos reutilizando exactamente las mismas
+ * primitivas que ya existen (Migrator::rollback()/run()): no hay un
+ * DROP TABLE crudo en ningún lado. Revertir lote por lote hasta que no
+ * quede nada, y luego migrar desde cero, produce el mismo resultado
+ * que un "drop all + migrate" pero ejecutando siempre el down() real de
+ * cada migración (ver docs/database.md).
+ */
+function runFresh(Migrator $migrator, array $args): void
+{
+    $force = in_array('--force', $args, true);
+
+    if (!$force) {
+        echo warn('Esto revertirá TODAS las migraciones (borrando lo que crean) y luego') . "\n";
+        echo "  las volverá a ejecutar desde cero. Esta operación borra datos.\n\n";
+        echo 'Continuar? [y/N]: ';
+
+        $answer = strtolower(trim((string) fgets(STDIN)));
+
+        if ($answer !== 'y') {
+            echo "Cancelado.\n";
+            return;
+        }
+    }
+
+    while (($reverted = $migrator->rollback()) !== []) {
+        foreach ($reverted as $identifier) {
+            echo "Revertido: {$identifier}\n";
+        }
+    }
+
+    runMigrate($migrator);
+}
+
+/**
+ * Crea un proyecto Misi nuevo copiando la estructura de ESTE proyecto a
+ * un directorio hermano. No hay un "instalador" ni un paquete Composer
+ * separado (docs/architecture.md ya documenta por qué Misi se
+ * distribuye copiando el framework por proyecto, no vía
+ * `composer require`): el checkout actual ES la plantilla. Así, mejorar
+ * el framework en un proyecto y luego crear el siguiente con `new` ya
+ * arrastra esa mejora, sin mantener una plantilla separada que se
+ * desincroniza (ver sección 1 del proyecto: "Construir una vez... y
+ * reutilizar").
+ */
+function runNew(string $basePath, ?string $name, array $args): void
+{
+    if ($name === null || trim($name) === '') {
+        fail('Uso: php bin/biz new nombre-proyecto');
+    }
+
+    if (preg_match('/^[A-Za-z0-9._-]+$/', $name) !== 1) {
+        fail("Nombre inválido: \"{$name}\" solo puede contener letras, números, \".\", \"_\" y \"-\".");
+    }
+
+    $target = dirname($basePath) . '/' . $name;
+
+    if (file_exists($target)) {
+        fail("Ya existe: {$target} (no se sobrescribe)");
+    }
+
+    echo "Creando proyecto Misi en {$target}...\n\n";
+
+    // storage/* (contenido) y .env son siempre por-proyecto: nunca se
+    // copian. examples/ es la demo del framework, no parte de un
+    // proyecto cliente (regla explícita, sección 42: "La demo NO debe
+    // convertirse en parte del framework"). AUDIT_*/CHANGELOG.md son el
+    // historial de ESTE checkout, no del proyecto nuevo.
+    $exclude = [
+        '.git',
+        '.env',
+        'storage/logs',
+        'storage/cache',
+        'storage/uploads',
+        'examples',
+        'AUDIT_REPORT.md',
+        'AUDIT_CHANGELOG.md',
+        'CHANGELOG.md',
+    ];
+
+    copyProjectSkeleton($basePath, $target, $exclude);
+
+    foreach (['logs', 'cache', 'uploads'] as $sub) {
+        $dir = "{$target}/storage/{$sub}";
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+            fail("No fue posible crear: {$dir}");
+        }
+        file_put_contents($dir . '/.gitkeep', '');
+    }
+
+    echo ok('Estructura del proyecto') . "\n";
+    echo ok('Configuración') . "\n";
+
+    if (is_file("{$target}/.env.example")) {
+        copy("{$target}/.env.example", "{$target}/.env");
+        echo ok('Environment (.env creado a partir de .env.example)') . "\n";
+    } else {
+        echo warn('.env.example no encontrado — crea .env a mano antes de usar el proyecto') . "\n";
+    }
+
+    echo "\nProyecto creado exitosamente.\n\n";
+    echo "Próximos pasos:\n\n";
+    echo "  cd {$name}\n";
+    echo "  # edita .env con tus credenciales de MySQL\n";
+    echo "  php bin/biz doctor\n";
+    echo "  php bin/biz serve\n";
+}
+
+/** @param array<int, string> $exclude rutas relativas a $source (archivo o carpeta completa) */
+function copyProjectSkeleton(string $source, string $target, array $exclude): void
+{
+    if (!mkdir($target, 0755, true) && !is_dir($target)) {
+        fail("No fue posible crear: {$target}");
+    }
+
+    $iterator = new \RecursiveIteratorIterator(
+        new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+        \RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    foreach ($iterator as $item) {
+        $relative = substr($item->getPathname(), strlen($source) + 1);
+
+        if (isExcludedPath($relative, $exclude)) {
+            continue;
+        }
+
+        $destination = $target . '/' . $relative;
+
+        if ($item->isDir()) {
+            if (!is_dir($destination) && !mkdir($destination, 0755, true) && !is_dir($destination)) {
+                fail("No fue posible crear: {$destination}");
+            }
+            continue;
+        }
+
+        $dir = dirname($destination);
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+            fail("No fue posible crear: {$dir}");
+        }
+
+        copy($item->getPathname(), $destination);
+    }
+}
+
+/** @param array<int, string> $exclude */
+function isExcludedPath(string $relative, array $exclude): bool
+{
+    foreach ($exclude as $pattern) {
+        if ($relative === $pattern || str_starts_with($relative, $pattern . '/')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * `create business` es deliberadamente honesto sobre lo que existe hoy:
+ * Business Core (business/) solo tiene un módulo de negocio real
+ * construido encima, Modules\Catalog (Fase 17). Tipos como
+ * restaurant/clothing/services/portfolio NO se generan porque ningún
+ * proyecto real los ha necesitado todavía — inventarlos ahora violaría
+ * la regla de oro del proyecto ("no abstracción sin necesidad real
+ * observada", ver ROADMAP.md). Se agregan cuando un segundo/tercer
+ * proyecto real los demuestre, igual que Catalog se agregó en la Fase
+ * 17 y no antes.
+ */
+function runCreateBusiness(string $basePath, ?string $type, array $args): void
+{
+    $available = [
+        'catalog' => 'Catálogo de productos y categorías (Business Core + Modules\\Catalog, Fase 16-17)',
+    ];
+
+    if ($type === null) {
+        echo "Tipos de negocio disponibles:\n\n";
+        foreach ($available as $key => $description) {
+            echo "  {$key} — {$description}\n";
+        }
+        echo "\nUso: php bin/biz create business <tipo>\n\n";
+        echo "Otros tipos (restaurant, clothing, services, portfolio, ...) todavía no\n";
+        echo "existen como plantilla: se agregan cuando un proyecto real los necesite,\n";
+        echo "no de forma especulativa (ver ROADMAP.md, \"Qué NO construir todavía\").\n";
+        return;
+    }
+
+    if (!isset($available[$type])) {
+        fail(
+            "Tipo de negocio desconocido: '{$type}'.\n\n" .
+            'Disponibles: ' . implode(', ', array_keys($available))
+        );
+    }
+
+    if (is_dir($basePath . '/modules/Catalog')) {
+        echo ok('modules/Catalog ya está presente en este proyecto.') . "\n";
+        echo tip("Ejecuta 'php bin/biz db migrate' para crear sus tablas.") . "\n";
+        return;
+    }
+
+    fail(
+        "modules/Catalog no está presente en este proyecto.\n" .
+        "'php bin/biz new' ya lo incluye por defecto; si este proyecto no lo tiene,\n" .
+        "cópialo desde otro checkout de Misi, o crea tu propio módulo con:\n" .
+        "  php bin/biz make:module Catalog"
+    );
+}
+
 function printUsage(): void
 {
     echo usageText();
@@ -206,31 +776,57 @@ function printUsage(): void
 function usageText(): string
 {
     return <<<TXT
-    Misi CLI
+    Misi Framework CLI
 
     Uso: php bin/biz <comando> [argumentos]
+         php bin/biz <grupo> <accion> [argumentos]
 
-    Comandos disponibles:
-      serve                        Levanta el servidor de desarrollo (por defecto 127.0.0.1:8000)
-      migrate                      Ejecuta las migraciones pendientes (core + módulos)
-      migrate:rollback              Revierte el último lote de migraciones
-      migrate:status                 Muestra el estado de las migraciones
-      db:seed                         Ejecuta database/seeders/DatabaseSeeder.php
-      make:controller Nombre            Genera app/Http/Controllers/{Nombre}Controller.php
-      make:model Nombre                  Genera app/Models/{Nombre}.php
-      make:service Nombre                 Genera app/Services/{Nombre}Service.php
-      make:repository Nombre               Genera app/Repositories/{Nombre}Repository.php
-      make:module Nombre                    Genera la estructura completa en modules/{Nombre}/
-      help                                    Muestra esta ayuda
+    Proyecto:
+      new nombre                       Crea un nuevo proyecto Misi (copia este checkout)
+      create business [tipo]           Crea/activa una estructura de negocio (ver tipos disponibles)
+
+    Generadores:
+      make controller Nombre           Genera app/Http/Controllers/{Nombre}Controller.php
+      make model Nombre                Genera app/Models/{Nombre}.php
+      make service Nombre              Genera app/Services/{Nombre}Service.php
+      make repository Nombre           Genera app/Repositories/{Nombre}Repository.php
+      make module Nombre               Genera la estructura completa en modules/{Nombre}/
+
+    Base de datos:
+      db migrate                       Ejecuta las migraciones pendientes (core + módulos)
+      db rollback                      Revierte el último lote de migraciones
+      db fresh [--force]               Revierte TODO y vuelve a migrar desde cero (borra datos)
+      db seed                          Ejecuta database/seeders/DatabaseSeeder.php
+      db status                        Muestra el estado de las migraciones
+
+    Desarrollo:
+      serve (alias: run)               Levanta el servidor de desarrollo (127.0.0.1:8000 por defecto)
+      doctor                           Diagnostica el entorno del proyecto
+      info                             Muestra información del proyecto (sin secretos)
+
+    Utilidades:
+      route:list                       Lista las rutas registradas
+      config:list                      Muestra la configuración pública (oculta secretos)
+
+    Otros:
+      version                          Muestra la versión de Misi
+      help                             Muestra esta ayuda
+
+    Alias de compatibilidad (sintaxis original, Fase 11-12, se mantienen igual):
+      migrate, migrate:rollback, migrate:status, db:seed
+      make:controller, make:model, make:service, make:repository, make:module
 
     Ejemplos:
       php bin/biz serve
-      php bin/biz serve 8080
       php bin/biz serve --host=0.0.0.0 --port=8080
-      php bin/biz migrate
-      php bin/biz make:controller Customer
-      php bin/biz make:controller Api/Ping
-      php bin/biz make:module Inventory
+      php bin/biz db migrate
+      php bin/biz db fresh --force
+      php bin/biz make controller Customer
+      php bin/biz make controller Api/Ping
+      php bin/biz make module Inventory
+      php bin/biz new tienda-maria
+      php bin/biz create business catalog
+      php bin/biz doctor
 
     TXT;
 }

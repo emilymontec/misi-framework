@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# Wrapper global de Misi.
+#
+# Igual que "npm"/"pnpm"/"git": este binario se instala UNA VEZ en el
+# sistema, y cada vez que lo ejecutas busca hacia arriba desde el
+# directorio actual el proyecto Misi más cercano (el primero que tenga
+# un archivo bin/biz), y le delega el comando completo.
+#
+# No reemplaza bin/biz -- lo LLAMA. Cada proyecto sigue teniendo su
+# propio bin/biz (con su propia versión del framework, sus propios
+# comandos personalizados, etc.) -- este script solo te ahorra escribir
+# "php bin/biz" y tener que estar parada justo en la raíz del proyecto.
+
+set -euo pipefail
+
+find_project_root() {
+    local dir="$PWD"
+
+    while [ "$dir" != "/" ]; do
+        if [ -f "$dir/bin/biz" ]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+
+    return 1
+}
+
+project_root="$(find_project_root)" || {
+    echo "misi: no se encontró ningún proyecto Misi (buscando bin/biz) desde $PWD hacia arriba." >&2
+    echo "      Corre este comando desde dentro de un proyecto Misi." >&2
+    exit 1
+}
+
+exec php "$project_root/bin/biz" "$@"

@@ -62,6 +62,18 @@ final class Router
         $this->middlewareAliases[$alias] = $middleware;
     }
 
+    /**
+     * Rutas registradas, en el orden en que fueron declaradas. De solo
+     * lectura: pensado para introspección (ej. `php bin/biz route:list`),
+     * no para que nada fuera del Router las mute.
+     *
+     * @return array<int, Route>
+     */
+    public function routes(): array
+    {
+        return $this->routes;
+    }
+
     public function dispatch(Request $request): Response
     {
         $method = $request->method();

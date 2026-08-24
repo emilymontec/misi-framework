@@ -93,8 +93,23 @@ final class Application
         date_default_timezone_set((string) $timezone);
     }
 
+    /**
+     * En CLI (bin/biz) no hay cookies que enviar ni cabeceras HTTP reales:
+     * configurar nombre/parámetros de cookie de sesión ahí no tiene efecto
+     * útil y, además, PHP emite un warning ("session cookie parameters
+     * cannot be changed after headers have already been sent") en cuanto
+     * un comando imprime algo antes de instanciar Application (ej.
+     * "doctor", "info") — detectado al integrar los nuevos comandos de la
+     * CLI. Ningún comando de bin/biz necesita sesión de todas formas
+     * (Auth::check() vía sesión no aplica a un proceso CLI de un solo
+     * request), así que se omite por completo en ese SAPI.
+     */
     private function configureSession(): void
     {
+        if (PHP_SAPI === 'cli') {
+            return;
+        }
+
         Session::configure(
             name: (string) $this->config->get('session.cookie_name', 'misi_session'),
             lifetime: (int) $this->config->get('session.lifetime', 0),

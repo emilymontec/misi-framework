@@ -38,6 +38,19 @@ final class Config
         return $value;
     }
 
+    /**
+     * Todos los valores cargados, agrupados por archivo de config (ej.
+     * `['app' => [...], 'database' => [...]]`). Pensado para
+     * introspección (`php bin/biz config:list`), no para mutación en
+     * bloque -- para eso está set().
+     *
+     * @return array<string, mixed>
+     */
+    public function all(): array
+    {
+        return $this->items;
+    }
+
     public function set(string $key, mixed $value): void
     {
         $segments = explode('.', $key);
