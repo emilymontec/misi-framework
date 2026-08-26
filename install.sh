@@ -1,31 +1,32 @@
 #!/bin/sh
 #
-# Instalador global de Misi -- estilo rustup/pnpm: se corre una vez por
-# máquina y deja el comando "misi" disponible en cualquier carpeta.
+# Instalador global de Misi -- UNIVERSAL.
 #
-#   curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh
+# El MISMO archivo funciona en:
+#   - Linux / macOS / WSL / Git Bash:    curl -fsSL <URL> | sh
+#   - Windows PowerShell (nativo):       irm <URL> | iex
 #
-# Qué hace, en orden:
-#   1. Clona (o actualiza, si ya existe) el framework en $MISI_HOME
-#      (por defecto ~/.misi/framework). ESE checkout es la plantilla
-#      que "misi new" usará de ahí en adelante -- no hay un paquete ni
-#      un registro separado del framework en sí (ver INSTALL.md).
-#   2. Enlaza bin/misi a una carpeta que ya esté en tu PATH (o lo copia,
-#      en sistemas donde crear symlinks requiere privilegios especiales,
-#      como Windows/Git Bash).
+# El encabezado de abajo es sintaxis polyglot: en sh/bash/zsh no hace
+# nada (es un here-doc / redirect sin efecto); en PowerShell abre un
+# comentario multilínea (<#) que ignora TODO el cuerpo sh hasta el #>
+# que aparece al final del mismo. Así cada intérprete ejecuta solo su
+# parte y jamás ve el código del otro.
 #
-# Variables de entorno que puedes fijar antes de correrlo:
-#   MISI_REPO      URL del repositorio git a clonar
-#                  (default: https://github.com/emilymontec/misi-framework.git)
-#   MISI_REF       rama o tag a usar (default: main)
-#   MISI_HOME      dónde instalar el framework (default: ~/.misi/framework)
+# Qué hace, en orden (igual en ambos shells):
+#   1. Verifica requisitos (git, php) sin abortar si falta php.
+#   2. Clona o actualiza el framework en $MISI_HOME (~/.misi/framework
+#      o $env:USERPROFILE\.misi\framework en Windows). Ese checkout es
+#      la plantilla que usa "misi new".
+#   3. Instala el wrapper global de "misi" en un directorio escribible
+#      del usuario (preferentemente uno que ya esté en tu PATH), con
+#      fallback seguro para no requerir sudo / admin.
 #
-# Requiere: git, php (>= 8.1). Sin eso, el instalador avisa y no falla
-# a medias -- revisa los mensajes antes de continuar.
-#
-# sh puro (no bash): para que "curl | sh" funcione igual en cualquier
-# sistema, sin asumir qué shell tiene el usuario por defecto.
+# Variables de entorno que puedes fijar antes:
+#   MISI_REPO   URL del repo git   (default: https://github.com/emilymontec/misi-framework.git)
+#   MISI_REF    rama o tag         (default: main)
+#   MISI_HOME   ruta de instalación (default: ~/.misi/framework)
 
+<# 2>/dev/null; :
 set -eu
 
 MISI_REPO="${MISI_REPO:-https://github.com/emilymontec/misi-framework.git}"
@@ -44,8 +45,6 @@ command_exists() {
 echo "Instalando Misi..."
 echo ""
 
-# --- Requisitos ------------------------------------------------------
-
 if ! command_exists git; then
     error "git no está instalado -- es necesario para descargar/actualizar Misi."
     exit 1
@@ -59,8 +58,6 @@ else
     warn "php no está en el PATH todavía -- instálalo antes de usar 'misi'."
     warn "El framework se instala igual; 'misi doctor' te lo va a recordar."
 fi
-
-# --- Descarga / actualización del framework --------------------------
 
 if [ -d "$MISI_HOME/.git" ]; then
     info "Ya existe una instalación en $MISI_HOME -- actualizando..."
@@ -81,10 +78,17 @@ fi
 
 chmod +x "$MISI_HOME/bin/biz" "$MISI_HOME/bin/misi"
 
-# --- Enlazar "misi" a una carpeta del PATH ----------------------------
+can_write() {
+    [ -d "$1" ] || return 1
+    tmpf="$(mktemp "$1/.misi_test_write.XXXXXX" 2>/dev/null)" || return 1
+    rm -f "$tmpf" 2>/dev/null
+    return 0
+}
 
 link_target=""
-for candidate in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
+system_wide_target=""
+
+for candidate in "$HOME/.local/bin" "$HOME/bin"; do
     case ":$PATH:" in
         *":$candidate:"*)
             link_target="$candidate"
@@ -93,32 +97,96 @@ for candidate in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
     esac
 done
 
-# Si nada de lo ya presente en PATH sirve, usa/crea ~/.local/bin de
-# todas formas (es la convención más común) y avisa al final que hay
-# que agregarlo al PATH a mano.
+if [ -z "$link_target" ]; then
+    for candidate in "$HOME/.local/bin" "$HOME/bin"; do
+        mkdir -p "$candidate" 2>/dev/null || true
+        if can_write "$candidate"; then
+            link_target="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$link_target" ]; then
+    if can_write "/usr/local/bin"; then
+        link_target="/usr/local/bin"
+    else
+        system_wide_target="/usr/local/bin"
+    fi
+fi
+
+use_sudo=0
+if [ -z "$link_target" ] && [ -n "$system_wide_target" ]; then
+    info "No se puede escribir en ~/.local/bin ni ~/.bin sin privilegios."
+    info "Se intentará con 'sudo' en $system_wide_target..."
+    if command_exists sudo && sudo -n true 2>/dev/null; then
+        use_sudo=1
+        link_target="$system_wide_target"
+    else
+        link_target="$HOME/.local/bin"
+        warn "sudo no disponible o requiere contraseña."
+        warn "Se usará $link_target (agrega la ruta al PATH a mano)."
+    fi
+fi
+
 if [ -z "$link_target" ]; then
     link_target="$HOME/.local/bin"
 fi
 
-mkdir -p "$link_target"
+if [ "$use_sudo" -eq 1 ]; then
+    sudo mkdir -p "$link_target"
+else
+    mkdir -p "$link_target"
+fi
 
-# En Windows (Git Bash / MSYS / Cygwin) crear symlinks normalmente
-# requiere privilegios de administrador o el "Modo desarrollador"
-# activado. Para no depender de eso -- sobre todo pensando en
-# clientes sin conocimientos técnicos -- copiamos el binario en vez
-# de enlazarlo cuando detectamos ese entorno. En Linux/macOS seguimos
-# usando symlink, que se actualiza solo en cada "misi update".
+install_symlink() {
+    src="$1"; dst="$2"; use_sudo="$3"
+    if [ "$use_sudo" -eq 1 ]; then
+        sudo ln -sf "$src" "$dst"
+    else
+        ln -sf "$src" "$dst"
+    fi
+}
+
+install_copy() {
+    src="$1"; dst="$2"; use_sudo="$3"
+    if [ "$use_sudo" -eq 1 ]; then
+        sudo cp -f "$src" "$dst"
+        sudo chmod +x "$dst"
+    else
+        cp -f "$src" "$dst"
+        chmod +x "$dst"
+    fi
+}
+
 case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
-        cp -f "$MISI_HOME/bin/misi" "$link_target/misi"
-        chmod +x "$link_target/misi"
-        ok "misi copiado en $link_target/misi"
-        warn "En Windows se copia en vez de enlazar -- si actualizas Misi,"
-        warn "vuelve a correr este instalador para refrescar la copia."
+        if install_copy "$MISI_HOME/bin/misi" "$link_target/misi" "$use_sudo"; then
+            ok "misi copiado en $link_target/misi"
+            warn "En Windows se copia en vez de enlazar -- si actualizas Misi,"
+            warn "vuelve a correr este instalador para refrescar la copia."
+        else
+            error "No se pudo copiar 'misi' en $link_target/misi."
+            error "Revisa permisos de escritura en $link_target."
+            exit 1
+        fi
         ;;
     *)
-        ln -sf "$MISI_HOME/bin/misi" "$link_target/misi"
-        ok "misi enlazado en $link_target/misi"
+        if install_symlink "$MISI_HOME/bin/misi" "$link_target/misi" "$use_sudo"; then
+            ok "misi enlazado en $link_target/misi"
+        else
+            warn "No se pudo crear enlace simbólico -- intentando copia directa..."
+            if install_copy "$MISI_HOME/bin/misi" "$link_target/misi" "$use_sudo"; then
+                ok "misi copiado en $link_target/misi"
+                warn "Instalación por copia: si actualizas Misi,"
+                warn "vuelve a correr este instalador para refrescar la copia."
+            else
+                error "No se pudo instalar 'misi' en $link_target/misi."
+                error "Revisa permisos de escritura en $link_target,"
+                error "o define MISI_HOME a una ruta alternativa."
+                exit 1
+            fi
+        fi
         ;;
 esac
 
@@ -145,3 +213,302 @@ case ":$PATH:" in
         echo "  misi new mi-primer-sitio"
         ;;
 esac
+
+exit 0
+#>
+
+# ============================================================
+# A PARTIR DE AQUÍ: código PowerShell (intérprete de Windows).
+# El cuerpo sh ya hizo exit 0; PowerShell ve el <# ... #> como
+# comentario multilínea y arranca la ejecución justo aquí.
+# ============================================================
+
+$ErrorActionPreference = 'Stop'
+
+function Write-Info($m)  { Write-Host "  $m" }
+function Write-Ok($m)    { Write-Host "  " -NoNewline; Write-Host ([char]0x2713) -ForegroundColor Green -NoNewline; Write-Host " $m" }
+function Write-Warn($m)  { Write-Host "  " -NoNewline; Write-Host '!' -ForegroundColor Yellow -NoNewline; Write-Host " $m" }
+function Write-Err($m)   { Write-Host "  " -NoNewline; Write-Host ([char]0x2717) -ForegroundColor Red -NoNewline; Write-Host " $m" }
+
+function Test-CommandExists([string]$name) {
+    return [bool](Get-Command $name -ErrorAction SilentlyContinue)
+}
+
+function Test-CanWrite([string]$dir) {
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return $false }
+    try {
+        $tmp = Join-Path $dir ('.misi_test_write_' + [guid]::NewGuid().ToString('N') + '.tmp')
+        [io.file]::WriteAllText($tmp, 'ok')
+        Remove-Item -LiteralPath $tmp -ErrorAction Stop
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Add-PathPermanently([string]$newPath) {
+    try {
+        $curUser = [Environment]::GetEnvironmentVariable('PATH', 'User')
+        if ($curUser -split ';' -notcontains $newPath) {
+            if ([string]::IsNullOrWhiteSpace($curUser)) { $joined = $newPath }
+            else { $joined = $curUser.TrimEnd(';') + ';' + $newPath }
+            [Environment]::SetEnvironmentVariable('PATH', $joined, 'User')
+        }
+        if ($env:PATH -split ';' -notcontains $newPath) {
+            $env:PATH = $newPath + ';' + $env:PATH
+        }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+Write-Host 'Instalando Misi...'
+Write-Host ''
+
+if (-not (Test-CommandExists 'git')) {
+    Write-Err 'git no está instalado -- es necesario para descargar/actualizar Misi.'
+    exit 1
+}
+Write-Ok 'git encontrado'
+
+if (Test-CommandExists 'php') {
+    $phpVersion = (php -r 'echo PHP_VERSION;' 2>$null)
+    if (-not $phpVersion) { $phpVersion = '0.0.0' }
+    Write-Ok "PHP $phpVersion encontrado"
+} else {
+    Write-Warn 'php no está en el PATH todavía -- instálalo antes de usar misi.'
+    Write-Warn 'El framework se instala igual; misi doctor te lo va a recordar.'
+}
+
+$defRepo = 'https://github.com/emilymontec/misi-framework.git'
+$defRef  = 'main'
+$defHome = Join-Path $env:USERPROFILE '.misi\framework'
+
+if ($env:MISI_REPO) { $MISI_REPO = $env:MISI_REPO } else { $MISI_REPO = $defRepo }
+if ($env:MISI_REF)  { $MISI_REF  = $env:MISI_REF  } else { $MISI_REF  = $defRef  }
+if ($env:MISI_HOME) { $MISI_HOME = $env:MISI_HOME } else { $MISI_HOME = $defHome }
+
+$gitDir = Join-Path $MISI_HOME '.git'
+if (Test-Path -LiteralPath $gitDir -PathType Container) {
+    Write-Info "Ya existe una instalación en $MISI_HOME -- actualizando..."
+    git -C $MISI_HOME fetch --depth 1 origin $MISI_REF
+    git -C $MISI_HOME checkout $MISI_REF
+    git -C $MISI_HOME reset --hard "origin/$MISI_REF"
+    Write-Ok "Actualizado a la última versión de '$MISI_REF'"
+} elseif (Test-Path -LiteralPath $MISI_HOME) {
+    Write-Err "$MISI_HOME existe pero no es una instalación de Misi (no tiene .git)."
+    Write-Err 'Muévelo o elimínalo, o define la variable de entorno MISI_HOME apuntando a otra ruta.'
+    exit 1
+} else {
+    $parent = Split-Path -LiteralPath $MISI_HOME -Parent
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    Write-Info "Clonando $MISI_REPO ($MISI_REF) en $MISI_HOME..."
+    git clone --depth 1 --branch $MISI_REF $MISI_REPO $MISI_HOME
+    Write-Ok "Framework instalado en $MISI_HOME"
+}
+
+$misiBin     = Join-Path $MISI_HOME 'bin\misi'
+$bizBin      = Join-Path $MISI_HOME 'bin\biz'
+$misiBinUnix = Join-Path $MISI_HOME 'bin/misi'
+$bizBinUnix  = Join-Path $MISI_HOME 'bin/biz'
+if (Test-Path -LiteralPath $misiBinUnix) { $misiBin = $misiBinUnix }
+if (Test-Path -LiteralPath $bizBinUnix)  { $bizBin  = $bizBinUnix  }
+
+$pathEntries = $env:PATH -split ';'
+
+$userCandidates = @(
+    (Join-Path $env:USERPROFILE '.misi\bin'),
+    (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'),
+    (Join-Path $env:USERPROFILE 'bin'),
+    (Join-Path $env:USERPROFILE '.local\bin')
+)
+$systemCandidates = @(
+    (Join-Path $env:ProgramFiles 'Misi')
+)
+
+$linkTarget = $null
+foreach ($c in $userCandidates) {
+    if ($pathEntries -contains $c) { $linkTarget = $c; break }
+}
+
+if (-not $linkTarget) {
+    foreach ($c in $userCandidates) {
+        try {
+            if (-not (Test-Path -LiteralPath $c)) { New-Item -ItemType Directory -Path $c -Force | Out-Null }
+        } catch {}
+        if (Test-CanWrite $c) { $linkTarget = $c; break }
+    }
+}
+
+$needsAdmin = $false
+$systemTarget = $null
+if (-not $linkTarget) {
+    foreach ($c in $systemCandidates) {
+        if (Test-CanWrite $c) { $linkTarget = $c; break }
+        $systemTarget = $c
+    }
+}
+
+if (-not $linkTarget -and $systemTarget) {
+    try {
+        $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+        $isAdmin   = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    } catch { $isAdmin = $false }
+
+    if ($isAdmin) {
+        $linkTarget = $systemTarget
+    } else {
+        $fallback = Join-Path $env:USERPROFILE '.misi\bin'
+        try { if (-not (Test-Path -LiteralPath $fallback)) { New-Item -ItemType Directory -Path $fallback -Force | Out-Null } } catch {}
+        $linkTarget = $fallback
+        Write-Warn 'No se puede escribir en rutas de sistema sin privilegios de administrador.'
+        Write-Warn "Se usará $linkTarget."
+    }
+}
+
+if (-not $linkTarget) {
+    $linkTarget = Join-Path $env:USERPROFILE '.misi\bin'
+}
+
+try {
+    if (-not (Test-Path -LiteralPath $linkTarget)) { New-Item -ItemType Directory -Path $linkTarget -Force | Out-Null }
+} catch {
+    Write-Err "No se puede crear el directorio $linkTarget"
+    exit 1
+}
+
+$misiCmdDst = Join-Path $linkTarget 'misi.cmd'
+$misiPs1Dst = Join-Path $linkTarget 'misi.ps1'
+
+$wrapperContent = @"
+@echo off
+setlocal EnableDelayedExpansion
+
+set "MISI_HOME=${MISI_HOME}"
+if defined MISI_HOME_OVERRIDE set "MISI_HOME=%MISI_HOME_OVERRIDE%"
+
+if /I "%~1"=="self-update" (
+    if not exist "%MISI_HOME%\.git" (
+        echo misi: no hay una instalacion global en %MISI_HOME%. >&2
+        exit /b 1
+    )
+    echo Actualizando Misi en %MISI_HOME%...
+    git -C "%MISI_HOME%" pull --ff-only
+    exit /b !ERRORLEVEL!
+)
+
+set "DIR=%CD%"
+:loop
+if exist "%DIR%\bin\biz" (
+    php "%DIR%\bin\biz" %*
+    exit /b !ERRORLEVEL!
+)
+if "%DIR%\"=="%~d0\" goto :global
+for %%D in ("%DIR%") do set "DIR=%%~dpD"
+if "!DIR:~-1!"=="\" set "DIR=!DIR:~0,-1!"
+goto loop
+
+:global
+if exist "%MISI_HOME%\bin\biz" (
+    php "%MISI_HOME%\bin\biz" %*
+    exit /b !ERRORLEVEL!
+)
+
+echo misi: no se encontro ningun proyecto Misi desde %CD% hacia arriba, >&2
+echo       y tampoco hay una instalacion global en %MISI_HOME%. >&2
+exit /b 1
+"@
+
+$wrapperPs1 = @"
+`$ErrorActionPreference = 'Stop'
+`$misiHome = if (`$env:MISI_HOME) { `$env:MISI_HOME } else { '$MISI_HOME' }
+
+function Find-ProjectRoot {
+    param([string]`$start = `$PWD.Path)
+    `$dir = `$start
+    while (`$true) {
+        if (Test-Path (Join-Path `$dir 'bin\biz')) { return `$dir }
+        `$parent = Split-Path `$dir -Parent
+        if (-not `$parent -or `$parent -eq `$dir) { return `$null }
+        `$dir = `$parent
+    }
+}
+
+if (`$args.Count -ge 1 -and `$args[0] -eq 'self-update') {
+    if (-not (Test-Path (Join-Path `$misiHome '.git'))) {
+        Write-Error "misi: no hay una instalacion global en `$misiHome"
+        exit 1
+    }
+    Write-Host "Actualizando Misi en `$misiHome..."
+    git -C `$misiHome pull --ff-only
+    exit `$LASTEXITCODE
+}
+
+`$root = Find-ProjectRoot
+if (`$root) {
+    php (Join-Path `$root 'bin\biz') @args
+    exit `$LASTEXITCODE
+}
+`$globalBiz = Join-Path `$misiHome 'bin\biz'
+if (Test-Path `$globalBiz) {
+    php `$globalBiz @args
+    exit `$LASTEXITCODE
+}
+Write-Error "misi: no se encontro ningun proyecto Misi desde `$PWD hacia arriba, y tampoco hay una instalacion global en `$misiHome"
+exit 1
+"@
+
+$installedOk = $false
+
+try {
+    [io.file]::WriteAllText($misiCmdDst, $wrapperContent, [Text.Encoding]::ASCII)
+    [io.file]::WriteAllText($misiPs1Dst, $wrapperPs1, [Text.UTF8Encoding]::new($false))
+    $installedOk = $true
+    Write-Ok "misi instalado en $misiCmdDst"
+} catch {
+    try {
+        if (-not (Test-Path -LiteralPath $linkTarget)) { New-Item -ItemType Directory -Path $linkTarget -Force | Out-Null }
+        [io.file]::WriteAllText($misiCmdDst, $wrapperContent, [Text.Encoding]::ASCII)
+        [io.file]::WriteAllText($misiPs1Dst, $wrapperPs1, [Text.UTF8Encoding]::new($false))
+        $installedOk = $true
+        Write-Ok "misi instalado en $misiCmdDst"
+    } catch {
+        Write-Err "No se pudo escribir 'misi' en $linkTarget."
+        Write-Err 'Revisa permisos de escritura, o define MISI_HOME a una ruta alternativa.'
+        exit 1
+    }
+}
+
+$alreadyInPath = $pathEntries -contains $linkTarget
+$permanentOk = $false
+if (-not $alreadyInPath) {
+    $permanentOk = Add-PathPermanently $linkTarget
+    if ($permanentOk) {
+        Write-Ok "$linkTarget agregado permanentemente al PATH de usuario."
+        Write-Warn 'Abre una NUEVA terminal para que el cambio al PATH surta efecto.'
+    } else {
+        Write-Warn 'No se pudo actualizar el PATH del sistema de forma permanente.'
+    }
+}
+
+Write-Host ''
+if ($alreadyInPath -or $permanentOk) {
+    Write-Host 'Instalacion completa. Prueba (en una terminal nueva si cambio el PATH):'
+    Write-Host ''
+    Write-Host '  misi version'
+    Write-Host '  misi doctor'
+    Write-Host '  misi new mi-primer-sitio'
+} else {
+    Write-Warn "$linkTarget no esta en tu PATH todavia."
+    Write-Host ''
+    Write-Host 'Agregalo a tu PATH de usuario con este comando (o manualmente en Panel de Control):'
+    Write-Host ''
+    Write-Host "  [Environment]::SetEnvironmentVariable('PATH', [Environment]::GetEnvironmentVariable('PATH','User') + ';$linkTarget', 'User')"
+    Write-Host '  $env:PATH = "' + $linkTarget + ';" + $env:PATH'
+    Write-Host ''
+    Write-Host 'Despues (y en una terminal nueva):'
+    Write-Host ''
+    Write-Host '  misi version'
+    Write-Host '  misi new mi-primer-sitio'
+}
