@@ -39,8 +39,13 @@ final class Env
 
                 self::$variables[$name] = $value;
 
-                if (getenv($name) === false) {
-                    putenv("{$name}={$value}");
+                // putenv() viene deshabilitada en InfinityFree (y en varios
+                // hosting compartidos): llamarla sin verificar emite un
+                // warning por cada línea del .env. El array interno de esta
+                // clase es la fuente real de valores; putenv() es solo una
+                // cortesía para código legado que dependa de getenv().
+                if (function_exists('putenv') && getenv($name) === false) {
+                    @putenv("{$name}={$value}");
                 }
 
                 $_ENV[$name] = $value;

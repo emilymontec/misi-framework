@@ -10,11 +10,21 @@ tiempo y costo de desarrollo en cada nuevo cliente.
 
 > Filosofía: construir una vez lo repetitivo, reutilizarlo siempre.
 
-Para el diseño completo, decisiones de arquitectura y lo que Misi
-deliberadamente NO hace, ver [`docs/architecture.md`](docs/architecture.md).
+## Instalación y uso rápido
 
-Para saber qué está construido, qué sigue y en qué orden, ver
-[`ROADMAP.md`](ROADMAP.md).
+```bash
+curl -fsSL https://raw.githubusercontent.com/TU_USUARIO/misi-framework/main/install.sh | sh
+
+misi new tienda-maria
+cd tienda-maria
+misi doctor
+misi db migrate
+misi serve
+```
+
+Guía completa de instalación, creación de proyectos, desarrollo y
+despliegue: [`INSTALL.md`](INSTALL.md). Despliegue en detalle (incluido
+hosting sin SSH): [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ---
 
@@ -65,7 +75,7 @@ Para saber qué está construido, qué sigue y en qué orden, ver
    punta a punta, y compatibilidad con hosting compartido sin SSH
    (InfinityFree) con herramientas de despliegue listas. Ver
    [`docs/security.md`](docs/security.md) sección "Auditoría Fase 15",
-   [`docs/deployment-infinityfree.md`](docs/deployment-infinityfree.md)
+   [`DEPLOYMENT.md`](DEPLOYMENT.md)
    y [`CHANGELOG.md`](CHANGELOG.md). **Salvedad honesta**: la
    verificación en hosting sin SSH se probó simulando la estructura
    exacta de InfinityFree contra MariaDB real, pero no contra una
@@ -303,7 +313,7 @@ misi/
 │   ├── migrations/          # users, roles/permissions, uploads (ejemplos)
 │   └── seeders/             # DatabaseSeeder.php (ejemplo)
 ├── deploy/
-│   └── infinityfree/        # .htaccess + web-runner.php para hosting sin SSH (ver docs/deployment-infinityfree.md)
+│   └── infinityfree/        # Material de despliegue para hosting sin SSH (ver DEPLOYMENT.md)
 ├── docs/                    # Documentación técnica
 ├── framework/                # El framework Misi en sí (namespace Misi\)
 │   ├── Core/                 # Application (orquestador)

@@ -37,11 +37,14 @@ declare(strict_types=1);
 $failures = 0;
 $projectRoot = dirname(__DIR__);
 
-// `misi new <nombre>` (ver bin/biz::runNew) siempre crea el proyecto como
-// HERMANO del proyecto actual (dirname($basePath) . '/' . $nombre) y solo
-// acepta un nombre simple (sin "/"), nunca una ruta arbitraria — por
-// diseño, no por limitación del test. El test respeta esa misma regla en
-// vez de pedirle al comando algo que nunca soportó.
+// `misi new <nombre>` (ver bin/biz::runNew) crea el proyecto en
+// $(pwd)/<nombre> — el mismo comportamiento sin importar si se invocó
+// desde dentro de un proyecto existente o desde la instalación global
+// (`~/.misi/framework`, ver bin/misi e install.sh). Este test simula
+// "estar parada en la carpeta de proyectos, a punto de crear uno
+// nuevo": ejecuta bin/biz del proyecto actual, pero con el directorio
+// de trabajo puesto en el HERMANO de este checkout, para no ensuciar
+// el propio repo con el proyecto de prueba.
 $tempProjectName = 'misi-cli-test-' . uniqid();
 $tempProjectPath = dirname($projectRoot) . '/' . $tempProjectName;
 
@@ -61,7 +64,18 @@ function check(string $label, bool $condition, int &$failures): void
  */
 function runCli(string $cwd, string ...$args): array
 {
-    $cmd = array_merge([PHP_BINARY, 'bin/biz'], $args);
+    return runCliScript($cwd . '/bin/biz', $cwd, ...$args);
+}
+
+/**
+ * Igual que runCli(), pero permite invocar un bin/biz distinto al del
+ * directorio de trabajo — necesario para probar `new`, que se ejecuta
+ * parada en un directorio que TODAVÍA no tiene bin/biz propio (es
+ * justo lo que el comando va a crear).
+ */
+function runCliScript(string $scriptPath, string $cwd, string ...$args): array
+{
+    $cmd = array_merge([PHP_BINARY, $scriptPath], $args);
     $process = proc_open(
         $cmd,
         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
@@ -151,12 +165,12 @@ echo "\n";
 
 echo "Proyecto temporal (misi new) + base de datos real\n";
 
-[$code, $out] = runCli($projectRoot, 'new', $tempProjectName);
+[$code, $out] = runCliScript($projectRoot . '/bin/biz', dirname($projectRoot), 'new', $tempProjectName);
 check('new crea un proyecto nuevo (exit 0)', $code === 0, $failures);
 check('new deja bin/biz ejecutable en el proyecto nuevo', is_file($tempProjectPath . '/bin/biz'), $failures);
 check('new deja .env creado a partir de .env.example', is_file($tempProjectPath . '/.env'), $failures);
 
-[$code, , $err] = runCli($projectRoot, 'new', $tempProjectName);
+[$code, , $err] = runCliScript($projectRoot . '/bin/biz', dirname($projectRoot), 'new', $tempProjectName);
 check('new no sobrescribe un directorio existente (exit 1)', $code === 1 && str_contains($err, 'Ya existe'), $failures);
 
 if (is_file($tempProjectPath . '/.env')) {

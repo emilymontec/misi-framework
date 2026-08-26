@@ -136,8 +136,7 @@ final class Request
      *     termina en el propio servidor de la app.
      *  2. Cabecera X-Forwarded-Proto: lo que pone un proxy que termina
      *     TLS delante de la app (ej. Cloudflare, que es como
-     *     InfinityFree entrega su SSL gratuito — ver
-     *     docs/deployment-infinityfree.md). Ahí Apache ve HTTP plano
+     *     InfinityFree entrega su SSL gratuito — ver DEPLOYMENT.md). Ahí Apache ve HTTP plano
      *     internamente aunque el visitante esté en HTTPS real.
      *
      * Confiar en X-Forwarded-Proto es seguro para este uso específico:

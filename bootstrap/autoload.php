@@ -19,7 +19,7 @@ declare(strict_types=1);
 // viene habilitada por defecto en la inmensa mayoría de hosting
 // compartido (incluido InfinityFree), pero si alguna vez no lo está,
 // mejor fallar aquí, de forma clara, que con un 500 fantasma en
-// producción. Ver docs/deployment-infinityfree.md.
+// producción. Ver DEPLOYMENT.md.
 if (!extension_loaded('mbstring')) {
     $message = "Misi requiere la extensión PHP 'mbstring', que no está "
         . "habilitada en este servidor. En hosting compartido, actívala "

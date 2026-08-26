@@ -1,0 +1,35 @@
+# Misi — .htaccess de public/ para InfinityFree.
+#
+# El .htaccess de la raíz de htdocs/ ya reenvía todo hacia aquí y ya
+# fuerza HTTPS y bloquea dotfiles a ese nivel. Este archivo solo cubre
+# lo que aplica cuando Apache ya está sirviendo DENTRO de public/:
+# servir assets estáticos (css/js) directo y mandar todo lo demás al
+# front controller, más las cabeceras de seguridad.
+
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

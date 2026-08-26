@@ -3,16 +3,24 @@
 # Wrapper global de Misi.
 #
 # Igual que "npm"/"pnpm"/"git": este binario se instala UNA VEZ en el
-# sistema, y cada vez que lo ejecutas busca hacia arriba desde el
-# directorio actual el proyecto Misi más cercano (el primero que tenga
-# un archivo bin/biz), y le delega el comando completo.
+# sistema (ver install.sh) y cada vez que lo ejecutas:
 #
-# No reemplaza bin/biz -- lo LLAMA. Cada proyecto sigue teniendo su
-# propio bin/biz (con su propia versión del framework, sus propios
-# comandos personalizados, etc.) -- este script solo te ahorra escribir
-# "php bin/biz" y tener que estar parada justo en la raíz del proyecto.
+#   1. Busca hacia arriba desde el directorio actual el proyecto Misi
+#      más cercano (el primero que tenga un archivo bin/biz), y le
+#      delega el comando completo -- así cada proyecto sigue corriendo
+#      con SU PROPIA copia del framework (sus propias versiones, sus
+#      propios comandos personalizados si los agregaste).
+#   2. Si no hay ningún proyecto cerca (ej. estás en una carpeta vacía
+#      para empezar uno nuevo, como "misi new"), cae a la instalación
+#      global en $MISI_HOME -- la misma que dejó install.sh.
+#
+# No reemplaza bin/biz -- lo LLAMA. La lógica de cada comando vive
+# siempre en bin/biz (del proyecto o de la instalación global); este
+# script solo decide A CUÁL bin/biz delegar.
 
 set -euo pipefail
+
+MISI_HOME="${MISI_HOME:-$HOME/.misi/framework}"
 
 find_project_root() {
     local dir="$PWD"
@@ -28,10 +36,36 @@ find_project_root() {
     return 1
 }
 
-project_root="$(find_project_root)" || {
-    echo "misi: no se encontró ningún proyecto Misi (buscando bin/biz) desde $PWD hacia arriba." >&2
-    echo "      Corre este comando desde dentro de un proyecto Misi." >&2
-    exit 1
-}
+# "misi self-update" actualiza la instalación GLOBAL ($MISI_HOME), no
+# un proyecto -- por eso se resuelve aquí, antes de delegar a ningún
+# bin/biz. No es un comando de bin/biz porque bin/biz no sabe (ni debe
+# saber) que existe algo como una "instalación global": esa idea vive
+# enteramente en este wrapper.
+if [ "${1:-}" = "self-update" ]; then
+    if [ ! -d "$MISI_HOME/.git" ]; then
+        echo "misi: no hay una instalación global en $MISI_HOME (o no es un checkout de git)." >&2
+        echo "      Instálala primero con install.sh -- ver INSTALL.md." >&2
+        exit 1
+    fi
 
-exec php "$project_root/bin/biz" "$@"
+    echo "Actualizando Misi en $MISI_HOME..."
+    git -C "$MISI_HOME" pull --ff-only
+    exit $?
+fi
+
+if project_root="$(find_project_root)"; then
+    exec php "$project_root/bin/biz" "$@"
+fi
+
+if [ -f "$MISI_HOME/bin/biz" ]; then
+    exec php "$MISI_HOME/bin/biz" "$@"
+fi
+
+echo "misi: no se encontró ningún proyecto Misi (buscando bin/biz) desde $PWD hacia arriba," >&2
+echo "      y tampoco hay una instalación global en $MISI_HOME." >&2
+echo "" >&2
+echo "  Si quieres crear un proyecto nuevo, instala Misi globalmente primero:" >&2
+echo "    curl -fsSL https://raw.githubusercontent.com/TU_USUARIO/misi-framework/main/install.sh | sh" >&2
+echo "" >&2
+echo "  Si ya tienes un proyecto Misi, corre este comando desde dentro de él." >&2
+exit 1

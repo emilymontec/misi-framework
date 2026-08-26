@@ -596,27 +596,40 @@ function runFresh(Migrator $migrator, array $args): void
 }
 
 /**
- * Crea un proyecto Misi nuevo copiando la estructura de ESTE proyecto a
- * un directorio hermano. No hay un "instalador" ni un paquete Composer
- * separado (docs/architecture.md ya documenta por qué Misi se
- * distribuye copiando el framework por proyecto, no vía
- * `composer require`): el checkout actual ES la plantilla. Así, mejorar
- * el framework en un proyecto y luego crear el siguiente con `new` ya
- * arrastra esa mejora, sin mantener una plantilla separada que se
- * desincroniza (ver sección 1 del proyecto: "Construir una vez... y
- * reutilizar").
+ * Crea un proyecto Misi nuevo copiando la estructura de la instalación
+ * de Misi que está ejecutando este comando ($basePath) al directorio
+ * actual (CWD) + $name.
+ *
+ * $basePath puede ser dos cosas distintas, y a esta función no le
+ * importa cuál: (a) un checkout de desarrollo cualquiera (ejecutando
+ * `php bin/biz new` desde dentro de un proyecto existente), o (b) la
+ * instalación global en `~/.misi/framework` (ejecutando `misi new`
+ * desde CUALQUIER carpeta, vía el wrapper `bin/misi` — ver ese archivo
+ * para el fallback a la instalación global). En ambos casos
+ * $basePath ES la plantilla: no hay un "paquete" separado del
+ * framework en sí (ver `install.sh` y `INSTALL.md`).
+ *
+ * El destino siempre es `$(pwd)/$name` — nunca relativo a $basePath —
+ * para que el comportamiento sea el mismo sin importar desde dónde se
+ * invoque (igual que `django-admin startproject` o `pnpm create`, que
+ * siempre crean en el directorio desde el que los ejecutas).
  */
 function runNew(string $basePath, ?string $name, array $args): void
 {
     if ($name === null || trim($name) === '') {
-        fail('Uso: php bin/biz new nombre-proyecto');
+        fail('Uso: misi new nombre-proyecto');
     }
 
     if (preg_match('/^[A-Za-z0-9._-]+$/', $name) !== 1) {
         fail("Nombre inválido: \"{$name}\" solo puede contener letras, números, \".\", \"_\" y \"-\".");
     }
 
-    $target = dirname($basePath) . '/' . $name;
+    $cwd = getcwd();
+    if ($cwd === false) {
+        fail('No fue posible determinar el directorio actual.');
+    }
+
+    $target = $cwd . '/' . $name;
 
     if (file_exists($target)) {
         fail("Ya existe: {$target} (no se sobrescribe)");
@@ -625,10 +638,17 @@ function runNew(string $basePath, ?string $name, array $args): void
     echo "Creando proyecto Misi en {$target}...\n\n";
 
     // storage/* (contenido) y .env son siempre por-proyecto: nunca se
-    // copian. examples/ es la demo del framework, no parte de un
-    // proyecto cliente (regla explícita, sección 42: "La demo NO debe
-    // convertirse en parte del framework"). AUDIT_*/CHANGELOG.md son el
-    // historial de ESTE checkout, no del proyecto nuevo.
+    // copian. examples/, AUDIT_*/CHANGELOG.md/ROADMAP.md/docs/ internos
+    // son historial y demo del checkout de origen, no del proyecto
+    // nuevo — se excluyen si existen (algunos ya no viven en el
+    // repositorio público de instalación). index.html SÍ se copia: es
+    // la página que InfinityFree (u otro hosting) sirve si el
+    // DirectoryIndex de Apache resuelve "/" a un archivo estático antes
+    // que a public/index.php -- por eso vive en la raíz del proyecto,
+    // no en public/. La página de bienvenida del entorno LOCAL es otra
+    // cosa: resources/views/welcome.php, servida por WelcomeController
+    // en "/" a través del router real (esa siempre se copia, es código
+    // de la app, no un estático).
     $exclude = [
         '.git',
         '.env',
@@ -639,6 +659,9 @@ function runNew(string $basePath, ?string $name, array $args): void
         'AUDIT_REPORT.md',
         'AUDIT_CHANGELOG.md',
         'CHANGELOG.md',
+        'ROADMAP.md',
+        'install.sh',
+        'INSTALL.md',
     ];
 
     copyProjectSkeleton($basePath, $target, $exclude);
@@ -665,8 +688,8 @@ function runNew(string $basePath, ?string $name, array $args): void
     echo "Próximos pasos:\n\n";
     echo "  cd {$name}\n";
     echo "  # edita .env con tus credenciales de MySQL\n";
-    echo "  php bin/biz doctor\n";
-    echo "  php bin/biz serve\n";
+    echo "  misi doctor\n";
+    echo "  misi serve\n";
 }
 
 /** @param array<int, string> $exclude rutas relativas a $source (archivo o carpeta completa) */
@@ -778,11 +801,14 @@ function usageText(): string
     return <<<TXT
     Misi Framework CLI
 
-    Uso: php bin/biz <comando> [argumentos]
-         php bin/biz <grupo> <accion> [argumentos]
+    Uso: misi <comando> [argumentos]
+         misi <grupo> <accion> [argumentos]
+
+    (si no tienes "misi" instalado globalmente, usa "php bin/biz" en su
+     lugar -- ver INSTALL.md para instalar el comando global)
 
     Proyecto:
-      new nombre                       Crea un nuevo proyecto Misi (copia este checkout)
+      new nombre                       Crea un nuevo proyecto Misi en el directorio actual
       create business [tipo]           Crea/activa una estructura de negocio (ver tipos disponibles)
 
     Generadores:
@@ -808,25 +834,28 @@ function usageText(): string
       route:list                       Lista las rutas registradas
       config:list                      Muestra la configuración pública (oculta secretos)
 
+    Global (solo con "misi" instalado, ver INSTALL.md):
+      self-update                      Actualiza la instalación global de Misi
+
     Otros:
       version                          Muestra la versión de Misi
       help                             Muestra esta ayuda
 
-    Alias de compatibilidad (sintaxis original, Fase 11-12, se mantienen igual):
+    Alias de compatibilidad (sintaxis original, se mantienen igual):
       migrate, migrate:rollback, migrate:status, db:seed
       make:controller, make:model, make:service, make:repository, make:module
 
     Ejemplos:
-      php bin/biz serve
-      php bin/biz serve --host=0.0.0.0 --port=8080
-      php bin/biz db migrate
-      php bin/biz db fresh --force
-      php bin/biz make controller Customer
-      php bin/biz make controller Api/Ping
-      php bin/biz make module Inventory
-      php bin/biz new tienda-maria
-      php bin/biz create business catalog
-      php bin/biz doctor
+      misi new tienda-maria
+      cd tienda-maria
+      misi doctor
+      misi db migrate
+      misi serve
+      misi make controller Customer
+      misi make controller Api/Ping
+      misi make module Inventory
+      misi create business catalog
+      misi db fresh --force
 
     TXT;
 }

@@ -7,35 +7,32 @@ namespace App\Http\Controllers;
 use Misi\Http\Request;
 use Misi\Http\Response;
 
+/**
+ * Sirve resources/views/welcome.php — la página de bienvenida con el
+ * diseño de marca de Misi (misma paleta que la landing del framework,
+ * index.html). Igual que UiKitController: sin motor de plantillas,
+ * solo un require con output buffering (ver el docblock de
+ * UiKitController para el razonamiento completo).
+ *
+ * No es parte del framework en sí: es contenido de plantilla que
+ * "misi new" copia a cada proyecto nuevo para que tenga algo que
+ * mostrar en "/" desde el primer minuto — reemplázala libremente.
+ */
 final class WelcomeController
 {
     public function index(Request $request): Response
     {
-        $html = <<<HTML
-        <!doctype html>
-        <html lang="es">
-        <head>
-            <meta charset="utf-8">
-            <title>Misi</title>
-        </head>
-        <body style="font-family: sans-serif; max-width: 640px; margin: 60px auto;">
-            <h1>Misi está funcionando 🎉</h1>
-            <p>Esta es la aplicación base. Edita <code>routes/web.php</code> y
-            <code>app/Http/Controllers</code> para comenzar tu proyecto.</p>
-            <ul>
-                <li><a href="/api/ping">/api/ping</a> (respuesta JSON)</li>
-                <li><a href="/saludo/Misi">/saludo/Misi</a> (parámetro de ruta)</li>
-                <li><a href="/ui-kit">/ui-kit</a> (componentes UI: buttons, forms, tablas, alerts, modal...)</li>
-            </ul>
-        </body>
-        </html>
-        HTML;
+        $viewPath = app()->basePath . '/resources/views/welcome.php';
 
-        return new Response($html);
+        ob_start();
+        require $viewPath;
+        $html = ob_get_clean();
+
+        return new Response($html !== false ? $html : '');
     }
 
     public function greet(Request $request, string $name): Response
     {
-        return new Response("<h1>Hola, " . htmlspecialchars($name) . "!</h1>");
+        return new Response('<h1>Hola, ' . htmlspecialchars($name) . '!</h1>');
     }
 }

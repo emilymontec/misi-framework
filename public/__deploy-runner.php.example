@@ -19,14 +19,15 @@ declare(strict_types=1);
  *   en vez de por CLI, reutilizando las mismas clases (Migrator,
  *   Seeder) ya probadas en la Fase 4 y la Fase 10.
  *
- * CÓMO USARLO (ver docs/deployment-infinityfree.md para el detalle):
+ * CÓMO USARLO (ver deploy/infinityfree/README.md para el detalle):
  *   1. Define DEPLOY_TOKEN en tu .env de producción (valor aleatorio
  *      largo, generado con bin/biz o cualquier generador de contraseñas
  *      — NUNCA un valor corto ni predecible).
- *   2. Sube este archivo a htdocs/ con un NOMBRE QUE TÚ ELIJAS (no
- *      "web-runner.php" — un nombre que solo tú conozcas añade una capa
- *      extra de seguridad por oscuridad, aunque la protección real es
- *      el token).
+ *   2. Renombra este archivo (quita el ".example") a un NOMBRE QUE TÚ
+ *      ELIJAS (no "__deploy-runner.php" — un nombre que solo tú
+ *      conozcas añade una capa extra de seguridad por oscuridad, aunque
+ *      la protección real es el token) y déjalo dentro de public/,
+ *      junto a index.php.
  *   3. Visita:
  *      https://tu-dominio/tu-nombre-elegido.php?token=TU_TOKEN&action=status
  *      Acciones disponibles: status | migrate | rollback | seed
@@ -43,10 +44,11 @@ declare(strict_types=1);
  *     normal de Misi (nivel info), incluyendo IP y acción.
  */
 
-// Este archivo vive en htdocs/ (raíz web) en producción, pero el resto
-// del framework vive UN NIVEL ARRIBA de htdocs (fuera del webroot) —
-// exactamente igual que public/index.php ya asume en el repo. Ver
-// docs/deployment-infinityfree.md sección "Estructura de carpetas".
+// Este archivo vive dentro de public/ (junto a index.php) en
+// producción. El resto del framework (bootstrap/, framework/,
+// business/, config/...) vive un nivel arriba de public/ — dentro de
+// htdocs/, pero fuera de la carpeta pública — exactamente igual que
+// public/index.php ya asume en el repo. Ver deploy/infinityfree/README.md.
 $basePath = dirname(__DIR__);
 
 require $basePath . '/bootstrap/autoload.php';

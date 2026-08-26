@@ -1,0 +1,78 @@
+# Misi — .htaccess raíz para InfinityFree (y hosting compartido similar).
+#
+# POR QUÉ EXISTE ESTE ARCHIVO (a diferencia de la versión anterior de
+# deploy/infinityfree/htdocs.htaccess):
+#
+#   El diseño original de Misi asumía que `htdocs/` en el hosting SOLO
+#   contendría lo que hoy es `public/` (index.php, css/, js/), y que
+#   framework/, business/, config/, storage/, etc. vivirían UN NIVEL
+#   ARRIBA de htdocs (fuera del webroot, inaccesibles por URL).
+#
+#   InfinityFree (plan gratuito) no lo permite: la cuenta está enjaulada
+#   dentro de htdocs/, tanto por FTP como por el administrador de
+#   archivos web — no se pueden crear carpetas hermanas a htdocs (error
+#   confirmado: "Can't create directory: Read-only file system" /
+#   "unable to create directory ... outside htdocs"). Foro oficial:
+#   https://forum.infinityfree.com/t/unable-to-create-new-directory-in-root-folder/10174
+#
+#   Solución: TODO el proyecto vive dentro de htdocs/ (este archivo está
+#   en la raíz de htdocs/, junto a framework/, business/, public/, etc.),
+#   y este .htaccess reenvía cada petición hacia public/, para que
+#   framework/, business/, config/, storage/, database/, .env, etc.
+#   nunca sean servidos directamente por el navegador — el efecto es
+#   idéntico al diseño original, solo que la protección la da este
+#   archivo en vez de la ubicación física fuera del webroot.
+#
+#   El código PHP no cambió: bootstrap/app.php sigue calculando la raíz
+#   del proyecto como dirname(__DIR__) desde public/index.php, que sigue
+#   siendo exactamente un nivel arriba de public/ — solo cambió qué hay
+#   "por fuera" de ese nivel (nada, en vez de la cuenta de hosting).
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Fuerza HTTPS (una sola vez, aquí; sesiones de Misi usan cookies Secure)
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Si la petición ya apunta a /public/... (poco común, pero evita bucles
+    # y evita que alguien intente acceder a /public/framework/... etc.)
+    RewriteCond %{REQUEST_URI} ^/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # Si existe un archivo REAL dentro de public/ (css/misi.css, js/api.js,
+    # el propio index.php, o un script de despliegue puntual), servirlo
+    # directamente desde ahí.
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Todo lo demás (rutas de la aplicación: /customers, /api/uploads,
+    # /storage/{path}, etc.) pasa por el front controller de Misi.
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+# Defensa en profundidad: si mod_rewrite no estuviera disponible por
+# algún motivo, bloquear todo acceso directo a este nivel en vez de
+# arriesgarse a exponer framework/, business/, config/ o .env.
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</IfModule>
+
+# Bloquea dotfiles (.env, .git si llegara a subirse por error, este mismo
+# .htaccess) incluso si alguien pidiera la ruta exacta.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
