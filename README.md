@@ -2,8 +2,8 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme_assets/misi-framework.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/readme_assets/misi-framework.svg">
-  <img alt="CreacionesEmaleli Logo" src="docs/readme_assets/misi-framework.svg" width="300">
+  <source media="(prefers-color-scheme: light)" srcset="docs/readme_assets/misi-framework-dark.svg">
+  <img alt="MisiFramework" src="docs/readme_assets/misi-framework.svg" width="300">
 </picture>
 
 
