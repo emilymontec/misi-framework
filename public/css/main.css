@@ -409,6 +409,7 @@ a:focus-visible, button:focus-visible {
     overflow-x: auto;
     white-space: nowrap;
 }
+
 .quick-install-code span { color: var(--c-lime); font-weight: 700; }
 
 .btn-copy-quick {
@@ -426,6 +427,7 @@ a:focus-visible, button:focus-visible {
     gap: 6px;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    align-self: center;
 }
 .btn-copy-quick:hover { background: #edff9e; transform: scale(1.02); }
 
@@ -1058,7 +1060,7 @@ section.page-section { padding: 90px 0 0; }
 
     /* Quick install: allow text to wrap */
     .quick-install-box { flex-direction: column; align-items: stretch; gap: 10px; }
-    .quick-install-code { font-size: 0.75rem; white-space: normal; word-break: break-all; }
+    .quick-install-code { font-size: 0.74rem; white-space: normal; word-break: break-all; }
     .btn-copy-quick { align-self: flex-start; }
 
     /* Hero actions: stack buttons */

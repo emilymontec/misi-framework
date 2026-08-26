@@ -1264,9 +1264,9 @@
         <!-- Bloque de instalación rápida con copy botón -->
         <div class="quick-install-box">
           <div class="quick-install-code" id="quickInstallCode">
-            <span>$</span> curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh
+            <span>$</span> curl.exe -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | bash.exe
           </div>
-          <button class="btn-copy-quick" id="btnCopyQuick" data-copy="curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh">
+          <button class="btn-copy-quick" id="btnCopyQuick" data-copy="curl.exe -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | bash.exe">
             <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
             <span>Copiar</span>
           </button>
