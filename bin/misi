@@ -65,7 +65,7 @@ echo "misi: no se encontró ningún proyecto Misi (buscando bin/biz) desde $PWD 
 echo "      y tampoco hay una instalación global en $MISI_HOME." >&2
 echo "" >&2
 echo "  Si quieres crear un proyecto nuevo, instala Misi globalmente primero:" >&2
-echo "    curl -fsSL https://raw.githubusercontent.com/TU_USUARIO/misi-framework/main/install.sh | sh" >&2
+echo "    curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh" >&2
 echo "" >&2
 echo "  Si ya tienes un proyecto Misi, corre este comando desde dentro de él." >&2
 exit 1

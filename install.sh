@@ -3,7 +3,7 @@
 # Instalador global de Misi -- estilo rustup/pnpm: se corre una vez por
 # máquina y deja el comando "misi" disponible en cualquier carpeta.
 #
-#   curl -fsSL https://raw.githubusercontent.com/TU_USUARIO/misi-framework/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh
 #
 # Qué hace, en orden:
 #   1. Clona (o actualiza, si ya existe) el framework en $MISI_HOME
@@ -14,7 +14,7 @@
 #
 # Variables de entorno que puedes fijar antes de correrlo:
 #   MISI_REPO      URL del repositorio git a clonar
-#                  (default: https://github.com/TU_USUARIO/misi-framework.git)
+#                  (default: https://github.com/emilymontec/misi-framework.git)
 #   MISI_REF       rama o tag a usar (default: main)
 #   MISI_HOME      dónde instalar el framework (default: ~/.misi/framework)
 #
@@ -26,7 +26,7 @@
 
 set -eu
 
-MISI_REPO="${MISI_REPO:-https://github.com/TU_USUARIO/misi-framework.git}"
+MISI_REPO="${MISI_REPO:-https://github.com/emilymontec/misi-framework.git}"
 MISI_REF="${MISI_REF:-main}"
 MISI_HOME="${MISI_HOME:-$HOME/.misi/framework}"
 
