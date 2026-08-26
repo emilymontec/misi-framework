@@ -1261,13 +1261,35 @@
           una tarde.
         </p>
 
-        <!-- Bloque de instalación rápida con copy botón -->
+        <!-- Bloque de instalación rápida universal con tabs + copy -->
         <div class="quick-install-box">
-          <div class="quick-install-code" id="quickInstallCode">
-            <span>$</span> bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"
+          <div class="install-tabs" role="tablist" aria-label="Sistema">
+            <button class="install-tab active" data-install-tab="bash" role="tab" aria-selected="true">
+              <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" x2="20" y1="19" y2="19"/>
+              </svg>
+              Linux / macOS / WSL
+            </button>
+            <button class="install-tab" data-install-tab="ps" role="tab" aria-selected="false">
+              <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                <path d="M3 3h18v18H3z" rx="3"/>
+              </svg>
+              Windows PowerShell
+            </button>
           </div>
-          <button class="btn-copy-quick" id="btnCopyQuick" data-copy='bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"'>
-            <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <div class="quick-install-code" id="quickInstallCode">
+            <span class="q-prompt q-prompt-bash" data-install-prompt="bash">$</span>
+            <span class="q-prompt q-prompt-ps" data-install-prompt="ps" style="display:none">PS></span>
+            <span class="q-cmd" data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span>
+            <span class="q-cmd" data-install-cmd="ps" style="display:none">& { $script = (irm -Uri https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh -UseBasicParsing | Out-String); & ([scriptblock]::Create($script)) }</span>
+          </div>
+          <button class="btn-copy-quick" id="btnCopyQuick"
+            data-copy='bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"'>
+            <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
             <span>Copiar</span>
           </button>
         </div>
@@ -1399,12 +1421,18 @@
       <div class="install-grid">
         <ol class="steps-list">
           <li>
+            <span class="step-num">0</span>
+            <span class="step-text">Instala el CLI global <code>misi</code> usando el comando universal (funciona en
+              Linux, macOS, WSL y Windows PowerShell). El MISMO archivo <code>install.sh</code> sirve para todos.</span>
+          </li>
+          <li>
             <span class="step-num">1</span>
-            <span class="step-text">Descarga o clona el proyecto base y entra a la carpeta.</span>
+            <span class="step-text">Crea tu proyecto con <code>misi new</code> y entra a la carpeta.</span>
           </li>
           <li>
             <span class="step-num">2</span>
-            <span class="step-text">Copia <code>.env.example</code> a <code>.env</code> y completa tus credenciales de MySQL.</span>
+            <span class="step-text">Copia <code>.env.example</code> a <code>.env</code> y completa tus credenciales de
+              MySQL.</span>
           </li>
           <li>
             <span class="step-num">3</span>
@@ -1412,7 +1440,8 @@
           </li>
           <li>
             <span class="step-num">4</span>
-            <span class="step-text">(Opcional) Siembra datos demo: un usuario admin con <code>changeme</code> como contraseña.</span>
+            <span class="step-text">(Opcional) Siembra datos demo: un usuario admin con <code>changeme</code> como
+              contraseña.</span>
           </li>
           <li>
             <span class="step-num">5</span>
@@ -1420,12 +1449,33 @@
           </li>
         </ol>
 
-        <div class="terminal">
+        <div class="terminal terminal--install">
           <div class="terminal-bar">
             <div class="terminal-dots"><span></span><span></span><span></span></div>
-            <div class="terminal-title">bash — primeros pasos</div>
+            <div class="install-tabs install-tabs--inline" role="tablist" aria-label="Shell">
+              <button class="install-tab active" data-install-tab="bash" role="tab" aria-selected="true">
+                <svg class="icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 17 10 11 4 5"/>
+                  <line x1="12" x2="20" y1="19" y2="19"/>
+                </svg>
+                bash / sh
+              </button>
+              <button class="install-tab" data-install-tab="ps" role="tab" aria-selected="false">
+                <svg class="icon" viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+                  <path d="M3 3h18v18H3z" rx="3"/>
+                </svg>
+                PowerShell
+              </button>
+            </div>
             <div class="terminal-actions">
-              <button class="btn-terminal-copy" data-copy="# 1-2. preparar el entorno
+              <button class="btn-terminal-copy" id="btnInstallCopy" data-copy="# 0. instalar CLI global
+bash -c &quot;curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh&quot;
+
+# 1. crear y entrar al proyecto
+misi new mi-proyecto
+cd mi-proyecto
+
+# 2. preparar el entorno
 cp .env.example .env
 nano .env
 
@@ -1440,21 +1490,28 @@ misi serve">
               </button>
             </div>
           </div>
-          <pre class="terminal-body"><code><span class="t-comment"># 1-2. preparar el entorno</span>
-<span class="t-prompt">$</span> cp .env.example .env
-<span class="t-prompt">$</span> nano .env   <span class="t-comment"># DB_DATABASE, DB_USERNAME, DB_PASSWORD</span>
+          <pre class="terminal-body"><code id="installCodeBlock"><span class="t-comment"># 0. instalar CLI global (mismo install.sh en todos los sistemas)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span><span data-install-cmd="ps" style="display:none">& { $script = (irm -Uri https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh -UseBasicParsing | Out-String); & ([scriptblock]::Create($script)) }</span>
 
-<span class="t-comment"># 3-4. base de datos</span>
-<span class="t-prompt">$</span> misi migrate
+<span class="t-comment"># 1. crear y entrar al proyecto</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi new mi-proyecto
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> cd mi-proyecto
+
+<span class="t-comment"># 2. preparar el entorno (.env)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">cp .env.example .env</span><span data-install-cmd="ps" style="display:none">copy .env.example .env</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">nano .env</span><span data-install-cmd="ps" style="display:none">notepad .env</span>   <span class="t-comment"># DB_DATABASE, DB_USERNAME, DB_PASSWORD</span>
+
+<span class="t-comment"># 3-4. base de datos (igual en ambos shells)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi migrate
 <span class="t-out">Migrado: 001_create_users_table.php
 Migrado: 002_create_roles_and_permissions.php
 Migrado: 003_create_uploads_table.php</span>
 
-<span class="t-prompt">$</span> misi db:seed
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi db:seed
 <span class="t-out">Usuario admin demo creado (admin@misi.test / changeme)</span>
 
-<span class="t-comment"># 5. arrancar</span>
-<span class="t-prompt">$</span> misi serve
+<span class="t-comment"># 5. arrancar (igual en ambos shells)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi serve
 <span class="t-out">Misi escuchando en http://127.0.0.1:8000</span></code></pre>
         </div>
       </div>
@@ -1728,8 +1785,73 @@ final class CustomerController
   </footer>
 
   <script>
-    // Cubos flotantes con interactividad suave al ratón
-    const cubeField = document.getElementById('cubeField');
+    (function () {
+      'use strict';
+
+      var installCommands = {
+        bash: {
+          quick: 'bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"',
+          full: '# 0. instalar CLI global\nbash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"\n\n# 1. crear y entrar al proyecto\nmisi new mi-proyecto\ncd mi-proyecto\n\n# 2. preparar el entorno\ncp .env.example .env\nnano .env\n\n# 3-4. base de datos\nmisi migrate\nmisi db:seed\n\n# 5. arrancar\nmisi serve'
+        },
+        ps: {
+          quick: '& { $script = (irm -Uri https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh -UseBasicParsing | Out-String); & ([scriptblock]::Create($script)) }',
+          full: '# 0. instalar CLI global\n& { $script = (irm -Uri https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh -UseBasicParsing | Out-String); & ([scriptblock]::Create($script)) }\n\n# 1. crear y entrar al proyecto\nmisi new mi-proyecto\ncd mi-proyecto\n\n# 2. preparar el entorno\ncopy .env.example .env\nnotepad .env\n\n# 3-4. base de datos\nmisi migrate\nmisi db:seed\n\n# 5. arrancar\nmisi serve'
+        }
+      };
+
+      function applyInstallShell(shell) {
+        var nodes, i, el, match;
+        nodes = document.querySelectorAll('[data-install-tab]');
+        for (i = 0; i < nodes.length; i++) {
+          match = nodes[i].getAttribute('data-install-tab') === shell;
+          nodes[i].classList.toggle('active', match);
+          nodes[i].setAttribute('aria-selected', match ? 'true' : 'false');
+        }
+        nodes = document.querySelectorAll('[data-install-prompt]');
+        for (i = 0; i < nodes.length; i++) {
+          nodes[i].style.display = nodes[i].getAttribute('data-install-prompt') === shell ? '' : 'none';
+        }
+        nodes = document.querySelectorAll('[data-install-cmd]');
+        for (i = 0; i < nodes.length; i++) {
+          nodes[i].style.display = nodes[i].getAttribute('data-install-cmd') === shell ? '' : 'none';
+        }
+        var qbtn = document.getElementById('btnCopyQuick');
+        if (qbtn) qbtn.setAttribute('data-copy', installCommands[shell].quick);
+        var ibtn = document.getElementById('btnInstallCopy');
+        if (ibtn) ibtn.setAttribute('data-copy', installCommands[shell].full);
+      }
+
+      function autoPickInstallShell() {
+        var ua = navigator.userAgent || '';
+        var isWindows = /Windows/i.test(ua) && !/Linux/i.test(ua) && !/Android/i.test(ua);
+        applyInstallShell(isWindows ? 'ps' : 'bash');
+      }
+
+      function bootInstallTabs() {
+        document.addEventListener('click', function (e) {
+          var t = e.target;
+          while (t && t !== document) {
+            if (t.nodeType === 1 && t.hasAttribute && t.hasAttribute('data-install-tab')) {
+              applyInstallShell(t.getAttribute('data-install-tab'));
+              break;
+            }
+            t = t.parentNode;
+          }
+        });
+        autoPickInstallShell();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootInstallTabs);
+      } else {
+        bootInstallTabs();
+      }
+    })();
+
+    (function () {
+    'use strict';
+      try {
+        var cubeField = document.getElementById('cubeField');
     if (cubeField && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const cubes = cubeField.querySelectorAll('.cube');
       cubeField.parentElement.addEventListener('mousemove', (e) => {

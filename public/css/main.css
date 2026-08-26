@@ -393,21 +393,38 @@ a:focus-visible, button:focus-visible {
 .quick-install-box {
     background: #0b1530;
     border: 2px solid var(--c-navy);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 12px;
+    padding: 14px 18px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 10px;
-    box-shadow: 3px 3px 0px var(--c-lime);
+    margin-top: 56px;
+    margin-bottom: 56px;
+    box-shadow: 4px 4px 0px var(--c-lime);
+}
+
+.quick-install-label {
+    font-family: var(--font-tech);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--c-ice-blue);
+    letter-spacing: 0.3px;
+}
+
+.quick-install-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
 }
 
 .quick-install-code {
     font-family: var(--font-code);
     font-size: 0.82rem;
     color: var(--c-ice-blue);
-    overflow-x: auto;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-all;
+    overflow: visible;
 }
 
 .quick-install-code span { color: var(--c-lime); font-weight: 700; }
@@ -1059,7 +1076,8 @@ section.page-section { padding: 90px 0 0; }
     .nav-actions { gap: 8px; }
 
     /* Quick install: allow text to wrap */
-    .quick-install-box { flex-direction: column; align-items: stretch; gap: 10px; }
+    .quick-install-box { gap: 8px; margin-top: 28px; }
+    .quick-install-row { flex-direction: column; align-items: stretch; }
     .quick-install-code { font-size: 0.74rem; white-space: normal; word-break: break-all; }
     .btn-copy-quick { align-self: flex-start; }
 
