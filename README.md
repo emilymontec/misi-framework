@@ -1,12 +1,11 @@
 <div align="center">
 
-<!--
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme_assets/creaciones-emaleli.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/readme_assets/creaciones-emaleli.svg">
-  <img alt="CreacionesEmaleli Logo" src="docs/readme_assets/creaciones-emaleli.svg" width="300">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme_assets/misi-framework.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/readme_assets/misi-framework.svg">
+  <img alt="CreacionesEmaleli Logo" src="docs/readme_assets/misi-framework.svg" width="300">
 </picture>
--->
+
 
 <p align="center">
   <strong>our own PHP development framework for quickly building administrative systems for small businesses; no over-engineering, no fluff.</strong>
