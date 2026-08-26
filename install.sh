@@ -10,7 +10,9 @@
 #      (por defecto ~/.misi/framework). ESE checkout es la plantilla
 #      que "misi new" usará de ahí en adelante -- no hay un paquete ni
 #      un registro separado del framework en sí (ver INSTALL.md).
-#   2. Enlaza bin/misi a una carpeta que ya esté en tu PATH.
+#   2. Enlaza bin/misi a una carpeta que ya esté en tu PATH (o lo copia,
+#      en sistemas donde crear symlinks requiere privilegios especiales,
+#      como Windows/Git Bash).
 #
 # Variables de entorno que puedes fijar antes de correrlo:
 #   MISI_REPO      URL del repositorio git a clonar
@@ -99,8 +101,26 @@ if [ -z "$link_target" ]; then
 fi
 
 mkdir -p "$link_target"
-ln -sf "$MISI_HOME/bin/misi" "$link_target/misi"
-ok "misi enlazado en $link_target/misi"
+
+# En Windows (Git Bash / MSYS / Cygwin) crear symlinks normalmente
+# requiere privilegios de administrador o el "Modo desarrollador"
+# activado. Para no depender de eso -- sobre todo pensando en
+# clientes sin conocimientos técnicos -- copiamos el binario en vez
+# de enlazarlo cuando detectamos ese entorno. En Linux/macOS seguimos
+# usando symlink, que se actualiza solo en cada "misi update".
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        cp -f "$MISI_HOME/bin/misi" "$link_target/misi"
+        chmod +x "$link_target/misi"
+        ok "misi copiado en $link_target/misi"
+        warn "En Windows se copia en vez de enlazar -- si actualizas Misi,"
+        warn "vuelve a correr este instalador para refrescar la copia."
+        ;;
+    *)
+        ln -sf "$MISI_HOME/bin/misi" "$link_target/misi"
+        ok "misi enlazado en $link_target/misi"
+        ;;
+esac
 
 echo ""
 
