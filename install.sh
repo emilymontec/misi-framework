@@ -231,15 +231,46 @@ function Write-Warn($m)  { Write-Host "  " -NoNewline; Write-Host '!' -Foregroun
 function Write-Err($m)   { Write-Host "  " -NoNewline; Write-Host ([char]0x2717) -ForegroundColor Red -NoNewline; Write-Host " $m" }
 
 function Test-CommandExists([string]$name) {
-    return [bool](Get-Command $name -ErrorAction SilentlyContinue)
+    return [bool](Get-Command -Name $name -ErrorAction SilentlyContinue)
+}
+
+function p([string]$a, [string]$b) {
+    return [io.path]::Combine($a, $b)
+}
+function Parent([string]$p) {
+    if ([string]::IsNullOrEmpty($p)) { return '' }
+    $q = $p.TrimEnd('\','/')
+    if ($q.Length -eq 2 -and $q[1] -eq ':') { return '' }
+    $r = [io.path]::GetDirectoryName($q)
+    if ([string]::IsNullOrEmpty($r)) { return '' }
+    return $r
+}
+function IsDir([string]$p) {
+    if ([string]::IsNullOrEmpty($p)) { return $false }
+    return [io.directory]::Exists($p)
+}
+function Exists([string]$p) {
+    if ([string]::IsNullOrEmpty($p)) { return $false }
+    return ([io.file]::Exists($p) -bor [io.directory]::Exists($p))
+}
+function EnsureDir([string]$p) {
+    if ([string]::IsNullOrEmpty($p)) { return }
+    if (-not [io.directory]::Exists($p)) {
+        [void][io.directory]::CreateDirectory($p)
+    }
+}
+function Rm([string]$p) {
+    if ([string]::IsNullOrEmpty($p)) { return }
+    if ([io.file]::Exists($p)) { [io.file]::Delete($p) }
+    elseif ([io.directory]::Exists($p)) { [io.directory]::Delete($p, $true) }
 }
 
 function Test-CanWrite([string]$dir) {
-    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return $false }
+    if (-not (IsDir $dir)) { return $false }
     try {
-        $tmp = Join-Path $dir ('.misi_test_write_' + [guid]::NewGuid().ToString('N') + '.tmp')
+        $tmp = p $dir ('.misi_test_write_' + [guid]::NewGuid().ToString('N') + '.tmp')
         [io.file]::WriteAllText($tmp, 'ok')
-        Remove-Item -LiteralPath $tmp -ErrorAction Stop
+        Rm $tmp
         return $true
     } catch {
         return $false
@@ -283,48 +314,48 @@ if (Test-CommandExists 'php') {
 
 $defRepo = 'https://github.com/emilymontec/misi-framework.git'
 $defRef  = 'main'
-$defHome = Join-Path $env:USERPROFILE '.misi\framework'
+$defHome = p $env:USERPROFILE '.misi\framework'
 
 if ($env:MISI_REPO) { $MISI_REPO = $env:MISI_REPO } else { $MISI_REPO = $defRepo }
 if ($env:MISI_REF)  { $MISI_REF  = $env:MISI_REF  } else { $MISI_REF  = $defRef  }
 if ($env:MISI_HOME) { $MISI_HOME = $env:MISI_HOME } else { $MISI_HOME = $defHome }
 
-$gitDir = Join-Path $MISI_HOME '.git'
-if (Test-Path -LiteralPath $gitDir -PathType Container) {
+$gitDir = p $MISI_HOME '.git'
+if (IsDir $gitDir) {
     Write-Info "Ya existe una instalación en $MISI_HOME -- actualizando..."
     git -C $MISI_HOME fetch --depth 1 origin $MISI_REF
     git -C $MISI_HOME checkout $MISI_REF
     git -C $MISI_HOME reset --hard "origin/$MISI_REF"
     Write-Ok "Actualizado a la última versión de '$MISI_REF'"
-} elseif (Test-Path -LiteralPath $MISI_HOME) {
+} elseif (Exists $MISI_HOME) {
     Write-Err "$MISI_HOME existe pero no es una instalación de Misi (no tiene .git)."
     Write-Err 'Muévelo o elimínalo, o define la variable de entorno MISI_HOME apuntando a otra ruta.'
     exit 1
 } else {
-    $parent = Split-Path -LiteralPath $MISI_HOME -Parent
-    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $parent = Parent $MISI_HOME
+    if (-not [string]::IsNullOrEmpty($parent)) { EnsureDir $parent }
     Write-Info "Clonando $MISI_REPO ($MISI_REF) en $MISI_HOME..."
     git clone --depth 1 --branch $MISI_REF $MISI_REPO $MISI_HOME
     Write-Ok "Framework instalado en $MISI_HOME"
 }
 
-$misiBin     = Join-Path $MISI_HOME 'bin\misi'
-$bizBin      = Join-Path $MISI_HOME 'bin\biz'
-$misiBinUnix = Join-Path $MISI_HOME 'bin/misi'
-$bizBinUnix  = Join-Path $MISI_HOME 'bin/biz'
-if (Test-Path -LiteralPath $misiBinUnix) { $misiBin = $misiBinUnix }
-if (Test-Path -LiteralPath $bizBinUnix)  { $bizBin  = $bizBinUnix  }
+$misiBin     = p $MISI_HOME 'bin\misi'
+$bizBin      = p $MISI_HOME 'bin\biz'
+$misiBinUnix = p $MISI_HOME 'bin/misi'
+$bizBinUnix  = p $MISI_HOME 'bin/biz'
+if (Exists $misiBinUnix) { $misiBin = $misiBinUnix }
+if (Exists $bizBinUnix)  { $bizBin  = $bizBinUnix  }
 
 $pathEntries = $env:PATH -split ';'
 
 $userCandidates = @(
-    (Join-Path $env:USERPROFILE '.misi\bin'),
-    (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'),
-    (Join-Path $env:USERPROFILE 'bin'),
-    (Join-Path $env:USERPROFILE '.local\bin')
+    (p $env:USERPROFILE '.misi\bin'),
+    (p $env:LOCALAPPDATA 'Microsoft\WindowsApps'),
+    (p $env:USERPROFILE 'bin'),
+    (p $env:USERPROFILE '.local\bin')
 )
 $systemCandidates = @(
-    (Join-Path $env:ProgramFiles 'Misi')
+    (p $env:ProgramFiles 'Misi')
 )
 
 $linkTarget = $null
@@ -334,9 +365,7 @@ foreach ($c in $userCandidates) {
 
 if (-not $linkTarget) {
     foreach ($c in $userCandidates) {
-        try {
-            if (-not (Test-Path -LiteralPath $c)) { New-Item -ItemType Directory -Path $c -Force | Out-Null }
-        } catch {}
+        try { EnsureDir $c } catch {}
         if (Test-CanWrite $c) { $linkTarget = $c; break }
     }
 }
@@ -359,8 +388,8 @@ if (-not $linkTarget -and $systemTarget) {
     if ($isAdmin) {
         $linkTarget = $systemTarget
     } else {
-        $fallback = Join-Path $env:USERPROFILE '.misi\bin'
-        try { if (-not (Test-Path -LiteralPath $fallback)) { New-Item -ItemType Directory -Path $fallback -Force | Out-Null } } catch {}
+        $fallback = p $env:USERPROFILE '.misi\bin'
+        try { EnsureDir $fallback } catch {}
         $linkTarget = $fallback
         Write-Warn 'No se puede escribir en rutas de sistema sin privilegios de administrador.'
         Write-Warn "Se usará $linkTarget."
@@ -368,18 +397,18 @@ if (-not $linkTarget -and $systemTarget) {
 }
 
 if (-not $linkTarget) {
-    $linkTarget = Join-Path $env:USERPROFILE '.misi\bin'
+    $linkTarget = p $env:USERPROFILE '.misi\bin'
 }
 
 try {
-    if (-not (Test-Path -LiteralPath $linkTarget)) { New-Item -ItemType Directory -Path $linkTarget -Force | Out-Null }
+    EnsureDir $linkTarget
 } catch {
     Write-Err "No se puede crear el directorio $linkTarget"
     exit 1
 }
 
-$misiCmdDst = Join-Path $linkTarget 'misi.cmd'
-$misiPs1Dst = Join-Path $linkTarget 'misi.ps1'
+$misiCmdDst = p $linkTarget 'misi.cmd'
+$misiPs1Dst = p $linkTarget 'misi.ps1'
 
 $wrapperContent = @"
 @echo off
@@ -422,21 +451,33 @@ exit /b 1
 
 $wrapperPs1 = @"
 `$ErrorActionPreference = 'Stop'
-`$misiHome = if (`$env:MISI_HOME) { `$env:MISI_HOME } else { '$MISI_HOME' }
+`$misiHome = @(`$env:MISI_HOME, '$MISI_HOME') | Where-Object { -not [string]::IsNullOrEmpty(`$_) } | Select-Object -First 1
+
+function pj([string]`$a, [string]`$b) { return [io.path]::Combine(`$a, `$b) }
+function pp([string]`$p) {
+    if ([string]::IsNullOrEmpty(`$p)) { return `$null }
+    `$q = `$p.TrimEnd('\','/')
+    if (`$q.Length -eq 2 -and `$q[1] -eq ':') { return `$null }
+    `$r = [io.path]::GetDirectoryName(`$q)
+    if ([string]::IsNullOrEmpty(`$r)) { return `$null }
+    return `$r
+}
+function fe([string]`$p) { return [io.file]::Exists(`$p) }
+function de([string]`$p) { return [io.directory]::Exists(`$p) }
 
 function Find-ProjectRoot {
     param([string]`$start = `$PWD.Path)
     `$dir = `$start
     while (`$true) {
-        if (Test-Path (Join-Path `$dir 'bin\biz')) { return `$dir }
-        `$parent = Split-Path `$dir -Parent
+        if (fe (pj `$dir 'bin\biz')) { return `$dir }
+        `$parent = pp `$dir
         if (-not `$parent -or `$parent -eq `$dir) { return `$null }
         `$dir = `$parent
     }
 }
 
 if (`$args.Count -ge 1 -and `$args[0] -eq 'self-update') {
-    if (-not (Test-Path (Join-Path `$misiHome '.git'))) {
+    if (-not (de (pj `$misiHome '.git'))) {
         Write-Error "misi: no hay una instalacion global en `$misiHome"
         exit 1
     }
@@ -447,11 +488,11 @@ if (`$args.Count -ge 1 -and `$args[0] -eq 'self-update') {
 
 `$root = Find-ProjectRoot
 if (`$root) {
-    php (Join-Path `$root 'bin\biz') @args
+    php (pj `$root 'bin\biz') @args
     exit `$LASTEXITCODE
 }
-`$globalBiz = Join-Path `$misiHome 'bin\biz'
-if (Test-Path `$globalBiz) {
+`$globalBiz = pj `$misiHome 'bin\biz'
+if (fe `$globalBiz) {
     php `$globalBiz @args
     exit `$LASTEXITCODE
 }
@@ -468,7 +509,7 @@ try {
     Write-Ok "misi instalado en $misiCmdDst"
 } catch {
     try {
-        if (-not (Test-Path -LiteralPath $linkTarget)) { New-Item -ItemType Directory -Path $linkTarget -Force | Out-Null }
+        EnsureDir $linkTarget
         [io.file]::WriteAllText($misiCmdDst, $wrapperContent, [Text.Encoding]::ASCII)
         [io.file]::WriteAllText($misiPs1Dst, $wrapperPs1, [Text.UTF8Encoding]::new($false))
         $installedOk = $true
@@ -505,7 +546,7 @@ if ($alreadyInPath -or $permanentOk) {
     Write-Host 'Agregalo a tu PATH de usuario con este comando (o manualmente en Panel de Control):'
     Write-Host ''
     Write-Host "  [Environment]::SetEnvironmentVariable('PATH', [Environment]::GetEnvironmentVariable('PATH','User') + ';$linkTarget', 'User')"
-    Write-Host '  $env:PATH = "' + $linkTarget + ';" + $env:PATH'
+    Write-Host ('  $env:PATH = "' + $linkTarget + ';" + $env:PATH')
     Write-Host ''
     Write-Host 'Despues (y en una terminal nueva):'
     Write-Host ''
