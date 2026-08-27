@@ -5,14 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description"
-    content="Misi — base de desarrollo en PHP, ligera y sin dependencias, para construir sistemas administrativos de pequeños negocios sin reinventar routing, auth, CSRF o validación.">
-  <title>Misi — Base PHP para sistemas administrativos</title>
+    content="De cero a servidor corriendo en 5 pasos: instalar el CLI, crear el proyecto, configurar el entorno, migrar y arrancar.">
+  <title>Instalación — Misi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" type="text/css" href="public/css/main.css">
+  <link rel="stylesheet" type="text/css" href="/public/css/main.css">
 </head>
 
 <body>
@@ -89,9 +89,9 @@
     </div>
     <nav class="nav-top" aria-label="Navegación principal" style="position:relative; z-index:1;">
       <ul class="nav-links" id="navLinks">
-        <li><a href="/" data-nav="inicio" class="active">&lt;INICIO&gt;</a></li>
+        <li><a href="/" data-nav="inicio">&lt;INICIO&gt;</a></li>
         <li><a href="/misi" data-nav="misi">QUÉ ES MISI</a></li>
-        <li><a href="/instalacion" data-nav="instalacion">INSTALACIÓN</a></li>
+        <li><a href="/instalacion" data-nav="instalacion" class="active">INSTALACIÓN</a></li>
         <li><a href="/cli" data-nav="cli">CLI</a></li>
       </ul>
       <div class="nav-actions">
@@ -153,129 +153,118 @@
 
   <!-- CONTENIDO PRINCIPAL -->
   <main class="container" id="contenido">
-    <section class="hero-main" id="inicio">
-      <h1 class="hero-title">
-        Una base PHP <br>
-        <span class="highlight-box">[ sin dependencias ]</span> <br>
-        para sistemas de gestión.
-      </h1>
-
-      <div class="hero-right">
-        <div class="trust-badge">
-          <span>PHP 8.1+</span><span class="dot">·</span>
-          <span>MySQL / MariaDB</span><span class="dot">·</span>
-          <span>Sin Composer obligatorio</span>
+    <!-- INSTALACIÓN -->
+    <section class="page-section" id="instalacion" aria-labelledby="install-title">
+      <div class="section-header">
+        <div>
+          <div class="section-tag">&gt; PRIMEROS PASOS</div>
+          <h2 class="section-title" id="install-title">/ De cero a servidor <br>corriendo en 5 pasos. /</h2>
         </div>
+      </div>
 
-        <p class="hero-description">
-          Misi es una base de desarrollo pensada para construir rápido sistemas
-          administrativos de pequeños negocios — sin reinventar routing,
-          autenticación, CSRF o validación en cada proyecto nuevo. Sin ORM.
-          Sin Node.js en producción. Nada que no puedas leer y entender en
-          una tarde.
-        </p>
+      <div class="install-grid">
+        <ol class="steps-list">
+          <li>
+            <span class="step-num">0</span>
+            <span class="step-text">Instala el CLI global <code>misi</code> usando el comando universal (funciona en
+              Linux, macOS, WSL y Windows PowerShell). El MISMO archivo <code>install.sh</code> sirve para todos.</span>
+          </li>
+          <li>
+            <span class="step-num">1</span>
+            <span class="step-text">Crea tu proyecto con <code>misi new</code> y entra a la carpeta.</span>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <span class="step-text">Copia <code>.env.example</code> a <code>.env</code> y completa tus credenciales de
+              MySQL.</span>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <span class="step-text">Corre las migraciones — crean las tablas de usuarios, roles y permisos.</span>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <span class="step-text">(Opcional) Siembra datos demo: un usuario admin con <code>changeme</code> como
+              contraseña.</span>
+          </li>
+          <li>
+            <span class="step-num">5</span>
+            <span class="step-text">Levanta el servidor de desarrollo y abre <code>localhost:8000</code>.</span>
+          </li>
+        </ol>
 
-        <div class="hero-actions">
-          <a href="/instalacion" class="btn-primary">
-            <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-              <rect width="18" height="18" x="3" y="3" rx="2" />
-            </svg>
-            EMPEZAR AHORA
-          </a>
-          <a href="/cli" class="btn-secondary">
-            <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="4 17 10 11 4 5" />
-              <line x1="12" x2="20" y1="19" y2="19" />
-            </svg>
-            VER EL CLI
-          </a>
-        </div>
+        <div class="terminal terminal--install">
+          <div class="terminal-bar">
+            <div class="terminal-dots"><span></span><span></span><span></span></div>
+            <div class="install-tabs install-tabs--inline" role="tablist" aria-label="Shell">
+              <button class="install-tab active" data-install-tab="bash" role="tab" aria-selected="true">
+                <svg class="icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" x2="20" y1="19" y2="19" />
+                </svg>
+                bash / sh
+              </button>
+              <button class="install-tab" data-install-tab="ps" role="tab" aria-selected="false">
+                <svg class="icon" viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+                  <path d="M3 3h18v18H3z" rx="3" />
+                </svg>
+                PowerShell
+              </button>
+            </div>
+            <div class="terminal-actions">
+              <button class="btn-terminal-copy" id="btnInstallCopy" data-copy="# 0. instalar CLI global
+bash -c \"curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh\"
 
-        <!-- Live Demos Bar -->
-        <div class="live-demos-bar">
-          <div class="live-demos-title">
-            <svg class="icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
-              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-            <span>Rutas y demos activas:</span>
+# 1. crear y entrar al proyecto
+misi new mi-proyecto
+cd mi-proyecto
+
+# 2. preparar el entorno
+cp .env.example .env
+nano .env
+
+# 3-4. base de datos
+misi migrate
+misi db:seed
+
+# 5. arrancar
+misi serve">
+                <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+                <span>Copiar</span>
+              </button>
+            </div>
           </div>
-          <div class="live-demos-links">
-            <a href="/ui-kit" class="live-demo-chip">
-              <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M3 9h18" />
-                <path d="M9 21V9" />
-              </svg>
-              UI Kit Explorer (/ui-kit)
-            </a>
-            <a href="/api/ping" class="live-demo-chip">
-              <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2v6" />
-                <path d="m4.93 10.93 4.24 4.24" />
-                <path d="M2 12h6" />
-                <path d="m4.93 13.07 4.24-4.24" />
-                <path d="M14 12h8" />
-                <path d="m14.83 9.17 4.24-4.24" />
-                <path d="m14.83 14.83 4.24 4.24" />
-              </svg>
-              API Ping (/api/ping)
-            </a>
-            <a href="/saludo/Misi" class="live-demo-chip">
-              <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="6" x2="6" y1="3" y2="15" />
-                <circle cx="18" cy="6" r="3" />
-                <circle cx="6" cy="18" r="3" />
-                <path d="M18 9a9 9 0 0 1-9 9" />
-              </svg>
-              Ruta Dinámica (/saludo/Misi)
-            </a>
-          </div>
+          <pre class="terminal-body"><code id="installCodeBlock"><span class="t-comment"># 0. instalar CLI global (mismo install.sh en todos los sistemas)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span><span data-install-cmd="ps" style="display:none">irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex</span>
+
+<span class="t-comment"># 1. crear y entrar al proyecto</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi new mi-proyecto
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> cd mi-proyecto
+
+<span class="t-comment"># 2. preparar el entorno (.env)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">cp .env.example .env</span><span data-install-cmd="ps" style="display:none">copy .env.example .env</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">nano .env</span><span data-install-cmd="ps" style="display:none">notepad .env</span>   <span class="t-comment"># DB_DATABASE, DB_USERNAME, DB_PASSWORD</span>
+
+<span class="t-comment"># 3-4. base de datos (igual en ambos shells)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi migrate
+<span class="t-out">Migrado: 001_create_users_table.php
+Migrado: 002_create_roles_and_permissions.php
+Migrado: 003_create_uploads_table.php</span>
+
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi db:seed
+<span class="t-out">Usuario admin demo creado (admin@misi.test / changeme)</span>
+
+<span class="t-comment"># 5. arrancar (igual en ambos shells)</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi serve
+<span class="t-out">Misi escuchando en http://127.0.0.1:8000</span></code></pre>
         </div>
       </div>
     </section>
-
-    <!-- INSTALACIÓN RÁPIDA (full-width) -->
-    <div class="quick-install-box">
-      <div class="quick-install-label">Instalación rápida</div>
-      <div class="install-tabs" role="tablist" aria-label="Sistema">
-        <button class="install-tab active" data-install-tab="bash" role="tab" aria-selected="true">
-          <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="4 17 10 11 4 5" />
-            <line x1="12" x2="20" y1="19" y2="19" />
-          </svg>
-          Linux / macOS / WSL
-        </button>
-        <button class="install-tab" data-install-tab="ps" role="tab" aria-selected="false">
-          <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-            <path d="M3 3h18v18H3z" rx="3" />
-          </svg>
-          Windows PowerShell
-        </button>
-      </div>
-      <div class="quick-install-row">
-        <div class="quick-install-code" id="quickInstallCode">
-          <span class="q-prompt q-prompt-bash" data-install-prompt="bash">$</span>
-          <span class="q-prompt q-prompt-ps" data-install-prompt="ps" style="display:none">PS></span>
-          <span class="q-cmd" data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span>
-          <span class="q-cmd" data-install-cmd="ps" style="display:none">irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex</span>
-        </div>
-        <button class="btn-copy-quick" id="btnCopyQuick"
-          data-copy='bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"'>
-          <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-          </svg>
-          <span>Copiar</span>
-        </button>
-      </div>
-    </div>
 
   </main>
 

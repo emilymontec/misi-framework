@@ -28,6 +28,18 @@
 #   siendo exactamente un nivel arriba de public/ — solo cambió qué hay
 #   "por fuera" de ese nivel (nada, en vez de la cuenta de hosting).
 
+# Apache redirige automáticamente una petición que coincide con un
+# DIRECTORIO real (ej. /routes, por el propio routes/web.php de Misi)
+# hacia esa misma ruta con "/" al final, ANTES de que las reglas de
+# mod_rewrite de abajo tengan oportunidad de actuar (confirmado con
+# curl -v: devolvía 301 a /routes/, incluso con la regla de vistas de
+# más abajo ya en su lugar). Como abajo ya decidimos explícitamente
+# qué se sirve para cada ruta, este comportamiento automático de
+# mod_dir sobra y rompe /routes.
+<IfModule mod_dir.c>
+    DirectorySlash Off
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
@@ -57,6 +69,16 @@
     RewriteCond %{REQUEST_URI} ^/$
     RewriteCond %{DOCUMENT_ROOT}/index.html -f
     RewriteRule ^$ index.html [END]
+
+    # Vistas de marketing con URL limpia: /cli -> public/views/cli.html,
+    # /misi -> public/views/misi.html, /ui-kit -> public/views/ui-kit.html,
+    # etc. (ver bin/build-landing.php). Mismo criterio y mismo cuidado con
+    # [END] que la excepción de "/" de arriba: NUNCA es un passthrough
+    # genérico de "si existe en algún lado, sírvelo" — solo mira dentro de
+    # public/views/, nunca fuera de ahí.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public/views%{REQUEST_URI}.html -f
+    RewriteRule ^(.*)$ public/views/$1.html [END]
 
     # Si la petición ya apunta a /public/... (poco común, pero evita bucles
     # y evita que alguien intente acceder a /public/framework/... etc.)
