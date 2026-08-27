@@ -148,7 +148,13 @@ final class Database
      * decidió no construir todavía. `where` sigue siendo responsabilidad
      * de quien la escribe, igual que cualquier SQL crudo del proyecto.
      */
-    private function assertSafeIdentifier(string $identifier): string
+    /**
+     * Público (a diferencia del resto de la clase) porque otras piezas
+     * del framework que interpolan nombres de tabla/columna directamente
+     * en SQL — hoy, Validator::checkUnique()/checkExists() — deben
+     * aplicar la misma barrera en vez de reinventarla.
+     */
+    public function assertSafeIdentifier(string $identifier): string
     {
         if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier) !== 1) {
             throw new DatabaseException(

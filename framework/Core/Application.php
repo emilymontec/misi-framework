@@ -128,10 +128,19 @@ final class Application
      * agregando rutas y migraciones. Si en el futuro varios módulos
      * reales necesitan reaccionar a eventos de otros, se evalúa entonces
      * (ver docs/modules.md).
+     *
+     * Busca en `backend/modules/` primero (convención oficial de un
+     * proyecto creado con `misi new`, que agrupa todo el código de
+     * aplicación bajo backend/) y, si no existe, en `modules/` en la
+     * raíz (convención plana del propio repositorio de desarrollo de
+     * Misi). Nunca ambas a la vez, para no descubrir el mismo módulo
+     * dos veces si un proyecto llegara a tener las dos carpetas.
      */
     private function discoverModules(): void
     {
-        $modulesDir = $this->basePath . '/modules';
+        $modulesDir = is_dir($this->basePath . '/backend/modules')
+            ? $this->basePath . '/backend/modules'
+            : $this->basePath . '/modules';
 
         if (!is_dir($modulesDir)) {
             return;

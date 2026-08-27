@@ -44,11 +44,20 @@ if (is_file($vendorAutoload)) {
 }
 
 spl_autoload_register(function (string $class): void {
+    // 'App\' y 'Modules\' resuelven dentro de backend/ cuando esa carpeta
+    // existe (convención oficial de un proyecto creado con "misi new":
+    // todo el código de aplicación vive agrupado bajo backend/), o en la
+    // raíz del proyecto si no (propio repositorio de desarrollo de Misi,
+    // que usa app/ y modules/ en la raíz). 'Misi\' (el framework) y
+    // 'Misi\Business\' nunca cambian de ubicación: son infraestructura,
+    // no código de aplicación del proyecto.
+    $appBase = is_dir(__DIR__ . '/../backend') ? __DIR__ . '/../backend' : __DIR__ . '/..';
+
     $map = [
         'Misi\\Business\\' => __DIR__ . '/../business/',
         'Misi\\' => __DIR__ . '/../framework/',
-        'App\\' => __DIR__ . '/../app/',
-        'Modules\\' => __DIR__ . '/../modules/',
+        'App\\' => $appBase . '/app/',
+        'Modules\\' => $appBase . '/modules/',
     ];
 
     foreach ($map as $prefix => $baseDir) {

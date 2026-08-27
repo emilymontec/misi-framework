@@ -6,8 +6,8 @@ declare(strict_types=1);
 /**
  * CLI de Misi.
  *
- * Uso: php bin/biz <comando> [argumentos]
- *      php bin/biz <grupo> <accion> [argumentos]   (ej. db migrate, make controller Foo)
+ * Uso: misi <comando> [argumentos]
+ *      misi <grupo> <accion> [argumentos]   (ej. db migrate, make controller Foo)
  *
  * No usa Symfony Console ni ninguna otra dependencia externa: el parseo
  * de $argv y las respuestas de texto plano son simples de resolver a
@@ -88,7 +88,7 @@ function resolveCommand(array $tokens): array
             'status' => 'migrate:status',
             'seed' => 'db:seed',
             'fresh' => 'db:fresh',
-            default => fail("Uso: php bin/biz db <migrate|rollback|fresh|seed|status>"),
+            default => fail("Uso: misi db <migrate|rollback|fresh|seed|status>"),
         };
 
         return [$mapped, array_slice($tokens, 2)];
@@ -177,18 +177,46 @@ try {
 }
 
 /**
- * Arma el Migrator con la fuente 'core' (database/migrations/, sin
- * prefijo, por compatibilidad con lo ya ejecutado antes de la Fase 10),
- * la fuente 'Business' (business/migrations/, Fase 16 — solo si el
- * proyecto copió esa carpeta; no todo proyecto usa Business Core) y una
- * fuente por cada módulo que declare carpeta de migraciones.
+ * Resuelve una ruta de proyecto que puede vivir en dos convenciones:
+ *
+ *  - `backend/{$relative}` — estructura oficial de un proyecto creado
+ *    con `misi new` (ver runNew() y CONTEXTO del framework: un proyecto
+ *    generado agrupa TODO su código de aplicación bajo backend/, para
+ *    separarlo claramente de lo que es infraestructura de Misi).
+ *  - `{$relative}` (sin prefijo) — convención plana usada por el propio
+ *    repositorio de desarrollo de Misi (este repo: database/migrations/,
+ *    modules/, etc. viven en la raíz junto a framework/, business/,
+ *    examples/) y por cualquier proyecto creado antes de que `backend/`
+ *    se volviera la convención oficial.
+ *
+ * `backend/` gana si existe — es la convención vigente para proyectos
+ * nuevos. Si no existe, se usa la ruta plana, así este mismo bin/biz
+ * (que se copia tal cual a cada proyecto Y se usa dentro del propio
+ * repo del framework) sigue funcionando en ambos casos sin necesitar
+ * dos implementaciones paralelas.
+ */
+function resolveProjectPath(string $basePath, string $relative): string
+{
+    $backendPath = $basePath . '/backend/' . $relative;
+    $flatPath = $basePath . '/' . $relative;
+
+    return is_dir($backendPath) || is_file($backendPath) ? $backendPath : $flatPath;
+}
+
+/**
+ * Arma el Migrator con la fuente 'core' (database/migrations/ dentro de
+ * backend/ en un proyecto generado, o en la raíz en el propio repo del
+ * framework — ver resolveProjectPath()), la fuente 'Business'
+ * (business/migrations/, Fase 16 — solo si el proyecto copió esa
+ * carpeta; no todo proyecto usa Business Core) y una fuente por cada
+ * módulo que declare carpeta de migraciones.
  */
 function buildMigrator(string $basePath): Migrator
 {
     $app = new Application($basePath);
 
     $sources = [
-        ['label' => null, 'path' => $basePath . '/database/migrations'],
+        ['label' => null, 'path' => resolveProjectPath($basePath, 'database/migrations')],
     ];
 
     if (is_dir($basePath . '/business/migrations')) {
@@ -249,7 +277,7 @@ function runStatus(Migrator $migrator): void
 
 function runSeed(Application $app): void
 {
-    $seederFile = $app->basePath . '/database/seeders/DatabaseSeeder.php';
+    $seederFile = resolveProjectPath($app->basePath, 'database/seeders/DatabaseSeeder.php');
 
     if (!is_file($seederFile)) {
         fail("No se encontró {$seederFile}");
@@ -272,9 +300,9 @@ function runSeed(Application $app): void
  * 404 JSON en vez del archivo real (ver docs/frontend.md). En
  * Apache/Nginx esto no aplica: sirven public/ directamente.
  *
- * Uso: php bin/biz serve
- *      php bin/biz serve 8080
- *      php bin/biz serve --host=0.0.0.0 --port=8080
+ * Uso: misi serve
+ *      misi serve 8080
+ *      misi serve --host=0.0.0.0 --port=8080
  */
 function runServe(array $args, string $basePath): void
 {
@@ -596,23 +624,26 @@ function runFresh(Migrator $migrator, array $args): void
 }
 
 /**
- * Crea un proyecto Misi nuevo copiando la estructura de la instalación
- * de Misi que está ejecutando este comando ($basePath) al directorio
- * actual (CWD) + $name.
+ * Crea un proyecto Misi nuevo con una estructura limpia y minimal:
  *
- * $basePath puede ser dos cosas distintas, y a esta función no le
- * importa cuál: (a) un checkout de desarrollo cualquiera (ejecutando
- * `php bin/biz new` desde dentro de un proyecto existente), o (b) la
- * instalación global en `~/.misi/framework` (ejecutando `misi new`
- * desde CUALQUIER carpeta, vía el wrapper `bin/misi` — ver ese archivo
- * para el fallback a la instalación global). En ambos casos
- * $basePath ES la plantilla: no hay un "paquete" separado del
- * framework en sí (ver `install.sh` y `INSTALL.md`).
+ *   proyecto/
+ *   ├── backend/          (modules/, database/)
+ *   ├── templates/        (vistas HTML)
+ *   ├── public/           (entry point, CSS, JS)
+ *   ├── framework/        (núcleo técnico de Misi)
+ *   ├── bootstrap/        (autoloader + app bootstrap)
+ *   ├── config/           (app.php, database.php, etc.)
+ *   ├── bin/              (CLI: biz, server.php)
+ *   ├── routes/           (web.php)
+ *   ├── storage/          (logs/, cache/, uploads/)
+ *   ├── .env
+ *   ├── .gitignore
+ *   └── composer.json
  *
- * El destino siempre es `$(pwd)/$name` — nunca relativo a $basePath —
- * para que el comportamiento sea el mismo sin importar desde dónde se
- * invoque (igual que `django-admin startproject` o `pnpm create`, que
- * siempre crean en el directorio desde el que los ejecutas).
+ * La plantilla vive en resources/scaffold/ — NO se copia la estructura
+ * completa del framework de desarrollo (que incluye landing pages,
+ * UI kit, docs, business core, etc. que no pertenecen a un proyecto
+ * nuevo).
  */
 function runNew(string $basePath, ?string $name, array $args): void
 {
@@ -635,37 +666,21 @@ function runNew(string $basePath, ?string $name, array $args): void
         fail("Ya existe: {$target} (no se sobrescribe)");
     }
 
+    $scaffold = $basePath . '/resources/scaffold';
+
+    if (!is_dir($scaffold)) {
+        fail("No se encontró la plantilla en {$scaffold}");
+    }
+
     echo "Creando proyecto Misi en {$target}...\n\n";
 
-    // storage/* (contenido) y .env son siempre por-proyecto: nunca se
-    // copian. examples/, AUDIT_*/CHANGELOG.md/ROADMAP.md/docs/ internos
-    // son historial y demo del checkout de origen, no del proyecto
-    // nuevo — se excluyen si existen (algunos ya no viven en el
-    // repositorio público de instalación). index.html SÍ se copia: es
-    // la página que InfinityFree (u otro hosting) sirve si el
-    // DirectoryIndex de Apache resuelve "/" a un archivo estático antes
-    // que a public/index.php -- por eso vive en la raíz del proyecto,
-    // no en public/. La página de bienvenida del entorno LOCAL es otra
-    // cosa: resources/views/welcome.php, servida por WelcomeController
-    // en "/" a través del router real (esa siempre se copia, es código
-    // de la app, no un estático).
-    $exclude = [
-        '.git',
-        '.env',
-        'storage/logs',
-        'storage/cache',
-        'storage/uploads',
-        'examples',
-        'AUDIT_REPORT.md',
-        'AUDIT_CHANGELOG.md',
-        'CHANGELOG.md',
-        'ROADMAP.md',
-        'install.sh',
-        'INSTALL.md',
-    ];
+    // 1. Copiar la plantilla limpia (backend/, templates/, public/, .gitignore, .env.example)
+    copyScaffold($scaffold, $target);
 
-    copyProjectSkeleton($basePath, $target, $exclude);
+    // 2. Copiar el núcleo del framework (framework/, bootstrap/, config/, bin/, routes/)
+    copyFrameworkCore($basePath, $target);
 
+    // 3. Crear storage/ vacío
     foreach (['logs', 'cache', 'uploads'] as $sub) {
         $dir = "{$target}/storage/{$sub}";
         if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
@@ -674,8 +689,30 @@ function runNew(string $basePath, ?string $name, array $args): void
         file_put_contents($dir . '/.gitkeep', '');
     }
 
+    // 4. Crear composer.json para el proyecto
+    $projectName = strtolower(str_replace(['-', '_'], ' ', $name));
+    $projectName = str_replace(' ', '-', trim($projectName));
+    file_put_contents(
+        "{$target}/composer.json",
+        json_encode([
+            'name' => "project/{$projectName}",
+            'description' => $name . ' — proyecto Misi',
+            'type' => 'project',
+            'require' => [
+                'php' => '>=8.1',
+                'ext-mbstring' => '*',
+            ],
+            'autoload' => [
+                'psr-4' => [
+                    'App\\' => 'backend/app/',
+                    'Modules\\' => 'backend/modules/',
+                ],
+            ],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
+    );
+
     echo ok('Estructura del proyecto') . "\n";
-    echo ok('Configuración') . "\n";
+    echo ok('Framework Misi (núcleo)') . "\n";
 
     if (is_file("{$target}/.env.example")) {
         copy("{$target}/.env.example", "{$target}/.env");
@@ -685,6 +722,16 @@ function runNew(string $basePath, ?string $name, array $args): void
     }
 
     echo "\nProyecto creado exitosamente.\n\n";
+    echo "Estructura:\n\n";
+    echo "  {$name}/\n";
+    echo "  ├── backend/        modules/, database/\n";
+    echo "  ├── templates/      vistas HTML (vacío — ver misi make:controller)\n";
+    echo "  ├── public/         entry point, CSS, JS\n";
+    echo "  ├── framework/      núcleo Misi\n";
+    echo "  ├── config/         configuración\n";
+    echo "  ├── routes/         rutas\n";
+    echo "  ├── index.html      bienvenida (editable)\n";
+    echo "  └── .env            edita tus credenciales\n\n";
     echo "Próximos pasos:\n\n";
     echo "  cd {$name}\n";
     echo "  # edita .env con tus credenciales de MySQL\n";
@@ -692,25 +739,18 @@ function runNew(string $basePath, ?string $name, array $args): void
     echo "  misi serve\n";
 }
 
-/** @param array<int, string> $exclude rutas relativas a $source (archivo o carpeta completa) */
-function copyProjectSkeleton(string $source, string $target, array $exclude): void
+/**
+ * Copia la plantilla limpia (resources/scaffold/) al proyecto nuevo.
+ */
+function copyScaffold(string $scaffold, string $target): void
 {
-    if (!mkdir($target, 0755, true) && !is_dir($target)) {
-        fail("No fue posible crear: {$target}");
-    }
-
     $iterator = new \RecursiveIteratorIterator(
-        new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+        new \RecursiveDirectoryIterator($scaffold, \FilesystemIterator::SKIP_DOTS),
         \RecursiveIteratorIterator::SELF_FIRST
     );
 
     foreach ($iterator as $item) {
-        $relative = substr($item->getPathname(), strlen($source) + 1);
-
-        if (isExcludedPath($relative, $exclude)) {
-            continue;
-        }
-
+        $relative = substr($item->getPathname(), strlen($scaffold) + 1);
         $destination = $target . '/' . $relative;
 
         if ($item->isDir()) {
@@ -729,16 +769,61 @@ function copyProjectSkeleton(string $source, string $target, array $exclude): vo
     }
 }
 
-/** @param array<int, string> $exclude */
-function isExcludedPath(string $relative, array $exclude): bool
+/**
+ * Copia los directorios esenciales del framework al proyecto nuevo:
+ * framework/, bootstrap/, config/, bin/, routes/.
+ *
+ * NO copia: app/, modules/, business/, resources/views/, public/css/main.css,
+ * public/css/uikit.css, index.html, ui-kit.html, install.sh, docs/, etc.
+ */
+/**
+ * Corre DESPUÉS de copyScaffold(): si resources/scaffold/ ya puso su
+ * propio archivo en una de estas rutas (ej. routes/web.php, pensado
+ * para funcionar sin ningún controlador bajo backend/app/ — un
+ * proyecto recién creado todavía no tiene ninguno), esa versión gana y
+ * NO se sobrescribe con la del propio repositorio de desarrollo de
+ * Misi (que sí depende de App\Http\Controllers\*, código que no se
+ * copia a proyectos nuevos).
+ */
+function copyFrameworkCore(string $basePath, string $target): void
 {
-    foreach ($exclude as $pattern) {
-        if ($relative === $pattern || str_starts_with($relative, $pattern . '/')) {
-            return true;
+    $includeDirs = ['framework', 'bootstrap', 'config', 'bin', 'routes', 'resources/stubs'];
+
+    foreach ($includeDirs as $dir) {
+        $source = $basePath . '/' . $dir;
+        if (!is_dir($source)) {
+            continue;
+        }
+
+        $dest = $target . '/' . $dir;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relative = substr($item->getPathname(), strlen($source) + 1);
+            $itemDest = $dest . '/' . $relative;
+
+            if ($item->isDir()) {
+                if (!is_dir($itemDest) && !mkdir($itemDest, 0755, true) && !is_dir($itemDest)) {
+                    fail("No fue posible crear: {$itemDest}");
+                }
+                continue;
+            }
+
+            if (is_file($itemDest)) {
+                continue;
+            }
+
+            $itemDir = dirname($itemDest);
+            if (!is_dir($itemDir) && !mkdir($itemDir, 0755, true) && !is_dir($itemDir)) {
+                fail("No fue posible crear: {$itemDir}");
+            }
+
+            copy($item->getPathname(), $itemDest);
         }
     }
-
-    return false;
 }
 
 /**
@@ -763,7 +848,7 @@ function runCreateBusiness(string $basePath, ?string $type, array $args): void
         foreach ($available as $key => $description) {
             echo "  {$key} — {$description}\n";
         }
-        echo "\nUso: php bin/biz create business <tipo>\n\n";
+        echo "\nUso: misi create business <tipo>\n\n";
         echo "Otros tipos (restaurant, clothing, services, portfolio, ...) todavía no\n";
         echo "existen como plantilla: se agregan cuando un proyecto real los necesite,\n";
         echo "no de forma especulativa (ver ROADMAP.md, \"Qué NO construir todavía\").\n";
@@ -779,15 +864,15 @@ function runCreateBusiness(string $basePath, ?string $type, array $args): void
 
     if (is_dir($basePath . '/modules/Catalog')) {
         echo ok('modules/Catalog ya está presente en este proyecto.') . "\n";
-        echo tip("Ejecuta 'php bin/biz db migrate' para crear sus tablas.") . "\n";
+        echo tip("Ejecuta 'misi db migrate' para crear sus tablas.") . "\n";
         return;
     }
 
     fail(
         "modules/Catalog no está presente en este proyecto.\n" .
-        "'php bin/biz new' ya lo incluye por defecto; si este proyecto no lo tiene,\n" .
+        "'misi new' ya lo incluye por defecto; si este proyecto no lo tiene,\n" .
         "cópialo desde otro checkout de Misi, o crea tu propio módulo con:\n" .
-        "  php bin/biz make:module Catalog"
+        "  misi make module Catalog"
     );
 }
 
@@ -804,18 +889,20 @@ function usageText(): string
     Uso: misi <comando> [argumentos]
          misi <grupo> <accion> [argumentos]
 
-    (si no tienes "misi" instalado globalmente, usa "php bin/biz" en su
-     lugar -- ver INSTALL.md para instalar el comando global)
+    (si no tienes "misi" en tu PATH, puedes ejecutar "php bin/biz" desde
+     la raíz del proyecto -- ver INSTALL.md para instalar el comando global)
 
     Proyecto:
       new nombre                       Crea un nuevo proyecto Misi en el directorio actual
       create business [tipo]           Crea/activa una estructura de negocio (ver tipos disponibles)
 
     Generadores:
-      make controller Nombre           Genera app/Http/Controllers/{Nombre}Controller.php
-      make model Nombre                Genera app/Models/{Nombre}.php
-      make service Nombre              Genera app/Services/{Nombre}Service.php
-      make repository Nombre           Genera app/Repositories/{Nombre}Repository.php
+      make controller Nombre           Genera .../Http/Controllers/{Nombre}Controller.php
+      make model Nombre                Genera .../Models/{Nombre}.php
+      make service Nombre              Genera .../Services/{Nombre}Service.php
+      make repository Nombre           Genera .../Repositories/{Nombre}Repository.php
+                                        (bajo backend/app/ en un proyecto creado con
+                                        "misi new"; bajo app/ en el propio repo de Misi)
       make module Nombre               Genera la estructura completa en modules/{Nombre}/
 
     Base de datos:
@@ -878,7 +965,7 @@ function usageText(): string
 function dispatchMake(string $command, ?string $name, string $basePath): void
 {
     if ($name === null || trim($name) === '') {
-        fail("Uso: php bin/biz {$command} Nombre");
+        fail("Uso: misi {$command} Nombre");
     }
 
     assertSafeGeneratorName($name);
@@ -893,13 +980,25 @@ function dispatchMake(string $command, ?string $name, string $basePath): void
     };
 }
 
+/**
+ * Raíz de "app/" genérica (controladores/modelos/servicios/repositorios
+ * que no pertenecen a un módulo específico): `backend/app/` en un
+ * proyecto creado con `misi new` (todo el código de aplicación vive
+ * bajo backend/), o `app/` en la raíz para el propio repositorio de
+ * desarrollo de Misi — mismo criterio que resolveProjectPath().
+ */
+function appRoot(string $basePath): string
+{
+    return is_dir($basePath . '/backend') ? $basePath . '/backend/app' : $basePath . '/app';
+}
+
 function runMakeController(string $basePath, string $name): void
 {
     $normalized = trim(str_replace('\\', '/', $name), '/');
     $parts = array_values(array_filter(explode('/', $normalized), fn ($p) => $p !== ''));
 
     if ($parts === []) {
-        fail('Uso: php bin/biz make:controller NombreController (o Sub/Carpeta/NombreController)');
+        fail('Uso: misi make controller NombreController (o Sub/Carpeta/NombreController)');
     }
 
     $parts = array_map(studly(...), $parts);
@@ -912,7 +1011,7 @@ function runMakeController(string $basePath, string $name): void
     $subNamespace = $parts !== [] ? '\\' . implode('\\', $parts) : '';
     $namespace = 'App\\Http\\Controllers' . $subNamespace;
     $relativeDir = $parts !== [] ? implode('/', $parts) . '/' : '';
-    $path = $basePath . '/app/Http/Controllers/' . $relativeDir . $class . '.php';
+    $path = appRoot($basePath) . '/Http/Controllers/' . $relativeDir . $class . '.php';
 
     $content = renderStub(loadStub($basePath, 'controller.stub'), [
         'namespace' => $namespace,
@@ -926,7 +1025,7 @@ function runMakeModel(string $basePath, string $name): void
 {
     $class = studly($name);
     $table = guessTableName($class);
-    $path = $basePath . '/app/Models/' . $class . '.php';
+    $path = appRoot($basePath) . '/Models/' . $class . '.php';
 
     $content = renderStub(loadStub($basePath, 'model.stub'), [
         'class' => $class,
@@ -945,7 +1044,7 @@ function runMakeService(string $basePath, string $name): void
         $class .= 'Service';
     }
 
-    $path = $basePath . '/app/Services/' . $class . '.php';
+    $path = appRoot($basePath) . '/Services/' . $class . '.php';
 
     $content = renderStub(loadStub($basePath, 'service.stub'), [
         'class' => $class,
@@ -964,7 +1063,7 @@ function runMakeRepository(string $basePath, string $name): void
 
     $base = preg_replace('/Repository$/', '', $class);
     $table = guessTableName($base !== '' && $base !== null ? $base : $class);
-    $path = $basePath . '/app/Repositories/' . $class . '.php';
+    $path = appRoot($basePath) . '/Repositories/' . $class . '.php';
 
     $content = renderStub(loadStub($basePath, 'repository.stub'), [
         'class' => $class,
@@ -978,7 +1077,8 @@ function runMakeRepository(string $basePath, string $name): void
 function runMakeModule(string $basePath, string $name): void
 {
     $class = studly($name);
-    $dir = $basePath . '/modules/' . $class;
+    $modulesRoot = is_dir($basePath . '/backend/modules') ? $basePath . '/backend/modules' : $basePath . '/modules';
+    $dir = $modulesRoot . '/' . $class;
 
     if (is_dir($dir)) {
         fail("Ya existe: {$dir} (no se sobrescribe)");
@@ -1007,12 +1107,14 @@ function runMakeModule(string $basePath, string $name): void
         ])
     );
 
-    echo "Módulo creado: modules/{$class}/\n";
+    $modulesLabel = substr($modulesRoot, strlen($basePath) + 1) . '/';
+
+    echo "Módulo creado: {$modulesLabel}{$class}/\n";
     echo "  - module.php\n";
     echo "  - routes.php (sin rutas activas todavía, ver el comentario dentro)\n";
     echo "  - Controllers/, Services/, Repositories/, Models/, Views/, migrations/ (vacías)\n\n";
-    echo "Siguiente paso: agrega tu primer controlador y migración — modules/Example/\n";
-    echo "(incluido en el proyecto) muestra el patrón completo funcionando.\n";
+    echo "Siguiente paso: agrega tu primer controlador y migración dentro de\n";
+    echo "{$modulesLabel}{$class}/.\n";
 }
 
 /** @param array<string, string> $replacements */

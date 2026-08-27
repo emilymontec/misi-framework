@@ -44,7 +44,7 @@ Misi’s success isn’t measured by how many features it has, but by a single q
 | **Technical framework** | Configuration, routing, HTTP, database, authentication, validation, sessions, security, storage, logging. It doesn't know what an “order” or a “customer” is. |
 | **Business Core** | Reusable administrative features across projects (`Misi\Business\`): customers, products, categories — without industry-specific logic. |
 |  **Modules** | Features specific to a particular business type (`Modules\`), leveraging the Business Core. Currently: `Catalog`. |
-|  **CLI (`bin/biz`)** | Development commands with grouped syntax, aliases, and guaranteed backward compatibility. |
+|  **CLI (`misi`)** | Development commands with grouped syntax, aliases, and guaranteed backward compatibility. |
 |  **Security** | Prepared statements, CSRF, HTTP headers, and noisy failures instead of silent bypasses. |
 
 ---
@@ -277,7 +277,11 @@ Misi/
 │   └── Catalog/
 │
 ├── bin/
-│   └── biz                  # Framework CLI
+│   ├── biz                  # Framework CLI (internal)
+│   └── misi                 # Global CLI wrapper
+│
+├── misi.cmd                 # Windows CLI wrapper (batch)
+├── misi.ps1                 # Windows CLI wrapper (PowerShell)
 │
 ├── bootstrap/
 ├── config/

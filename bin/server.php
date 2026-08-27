@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Router script EXCLUSIVO del servidor embebido de PHP (`php bin/biz
- * serve`). Nunca se usa en producción — Apache/Nginx sirven public/
+ * Router script EXCLUSIVO del servidor embebido de PHP (`misi serve`). Nunca se usa en producción — Apache/Nginx sirven public/
  * directamente, sin pasar por este archivo.
  *
  * Por qué existe en vez de usar public/index.php directamente como

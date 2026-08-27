@@ -337,7 +337,7 @@ a:focus-visible, button:focus-visible {
     display: grid;
     grid-template-columns: 1.25fr 0.75fr;
     gap: 56px;
-    align-items: center;
+    align-items: start;
 }
 
 .hero-title {

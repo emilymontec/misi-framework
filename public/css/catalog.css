@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Catalog Module — panel.php styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+.catalog-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--c-navy, #253a82);
+    color: #fff;
+}
+
+.catalog-nav-brand {
+    font-family: var(--font-display, 'Outfit', sans-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.catalog-nav-subtitle {
+    font-size: 13px;
+    color: var(--c-ice-blue, #c0e0ff);
+}
+
+.catalog-main {
+    max-width: 1040px;
+    margin: 24px auto;
+    padding: 0 20px;
+}
+
+.catalog-section {
+    margin-bottom: 24px;
+}
+
+.catalog-form-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+}
+
+.catalog-form-row .sd-form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.catalog-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.catalog-form-grid .sd-form-group.span-2 {
+    grid-column: span 2;
+}
+
+.catalog-form-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.catalog-actions-cell {
+    white-space: nowrap;
+}

@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 /**
- * Descriptor del módulo {{class}}. Ver docs/modules.md para el contrato
- * completo y modules/Example/ como referencia funcional.
+ * Descriptor del módulo {{class}}. Un módulo es una carpeta con este
+ * archivo (obligatorio: 'name', 'routes' y 'migrations' — usa null en
+ * cualquiera de las dos últimas si el módulo no las necesita) más lo
+ * que quieras agregar dentro: Controllers/, Services/, Repositories/,
+ * Models/, Views/, migrations/.
  */
 return [
     'name' => '{{class}}',

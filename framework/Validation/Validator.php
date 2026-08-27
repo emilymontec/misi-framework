@@ -206,12 +206,22 @@ final class Validator
         $table = $params[0] ?? throw new RuntimeException('Uso: unique:tabla,columna');
         $column = $params[1] ?? throw new RuntimeException('Uso: unique:tabla,columna');
 
+        // Fase 15 (auditoría de seguridad): igual que en Database::insert()/
+        // update(), $table/$column normalmente los escribe la desarrolladora
+        // en la propia definición de la regla, no el usuario final. Esta es
+        // la misma segunda barrera — si una regla llegara a construirse
+        // dinámicamente a partir de input no confiable, un identificador
+        // con SQL incrustado se rechaza aquí en vez de interpolarse.
+        $this->db->assertSafeIdentifier($table);
+        $this->db->assertSafeIdentifier($column);
+
         $sql = "SELECT 1 FROM {$table} WHERE {$column} = ?";
         $bindings = [$value];
 
         // unique:tabla,columna,valor_excepcion,columna_excepcion
         // (para permitir el propio registro al editar)
         if (isset($params[2], $params[3])) {
+            $this->db->assertSafeIdentifier($params[3]);
             $sql .= " AND {$params[3]} != ?";
             $bindings[] = $params[2];
         }
@@ -228,6 +238,9 @@ final class Validator
 
         $table = $params[0] ?? throw new RuntimeException('Uso: exists:tabla,columna');
         $column = $params[1] ?? throw new RuntimeException('Uso: exists:tabla,columna');
+
+        $this->db->assertSafeIdentifier($table);
+        $this->db->assertSafeIdentifier($column);
 
         return $this->db->selectOne("SELECT 1 FROM {$table} WHERE {$column} = ?", [$value]) !== null;
     }

@@ -36,6 +36,28 @@
     RewriteCond %{HTTPS} off
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+    # Excepción puntual: solo la ruta exacta "/" y solo si existe un
+    # index.html real en la raíz, se sirve tal cual (sin pasar por
+    # PHP) — es la landing de marketing (ver index.html), distinta de
+    # resources/views/welcome.php (la bienvenida de desarrollo local,
+    # que sigue sirviéndose por el router en cualquier otra ruta).
+    # A propósito NO es una regla genérica de "si el archivo existe en
+    # la raíz, sírvelo": eso expondría framework/*.php, config/*.php,
+    # etc. como archivos planos. Todo lo demás sigue forzado a pasar
+    # por public/.
+    #
+    # OJO con [L] aquí: en contexto de .htaccess (por-directorio), [L]
+    # NO detiene la reescritura del todo — Apache hace un internal
+    # redirect a "index.html" y vuelve a evaluar este mismo .htaccess
+    # desde el principio para esa nueva URI. Como "index.html" no
+    # coincide con ninguna condición de las reglas de arriba, cae en la
+    # regla catch-all de más abajo y termina en public/index.php de
+    # todas formas (confirmado con RewriteLog). [END] sí corta la
+    # reescritura por completo (Apache 2.4+, disponible en InfinityFree).
+    RewriteCond %{REQUEST_URI} ^/$
+    RewriteCond %{DOCUMENT_ROOT}/index.html -f
+    RewriteRule ^$ index.html [END]
+
     # Si la petición ya apunta a /public/... (poco común, pero evita bucles
     # y evita que alguien intente acceder a /public/framework/... etc.)
     RewriteCond %{REQUEST_URI} ^/public/ [NC]

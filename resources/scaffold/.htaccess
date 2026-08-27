@@ -1,0 +1,66 @@
+# Misi — .htaccess raíz.
+#
+# Necesario en cualquier hosting (incluido InfinityFree y similares)
+# donde el proyecto completo vive dentro del webroot en vez de tener
+# framework/, config/, .env, etc. un nivel por fuera de él. Sin este
+# archivo, esos archivos quedarían accesibles directamente por URL.
+#
+# Reenvía toda petición hacia public/ (el único directorio pensado
+# para ser servido directamente) y bloquea el acceso de respaldo si
+# mod_rewrite no estuviera disponible.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Fuerza HTTPS (las cookies de sesión de Misi usan el flag Secure
+    # en producción, ver config/session.php).
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Excepción puntual: solo la ruta exacta "/" y solo si existe un
+    # index.html real en la raíz, se sirve tal cual (sin pasar por
+    # PHP) — es la bienvenida estática de despliegue (ver index.html).
+    # A propósito NO es una regla genérica de "si el archivo existe en
+    # la raíz, sírvelo": eso expondría config/database.php,
+    # framework/*.php, etc. como archivos planos. Todo lo demás sigue
+    # forzado a pasar por public/.
+    # OJO con [L] aquí: en contexto de .htaccess (por-directorio), [L]
+    # NO detiene la reescritura del todo — Apache hace un internal
+    # redirect a "index.html" y vuelve a evaluar este mismo .htaccess
+    # desde el principio para esa nueva URI, cayendo en la regla
+    # catch-all de abajo y terminando en public/index.php de todas
+    # formas (confirmado con RewriteLog trace). [END] sí corta la
+    # reescritura por completo (Apache 2.4+, disponible en InfinityFree).
+    RewriteCond %{REQUEST_URI} ^/$
+    RewriteCond %{DOCUMENT_ROOT}/index.html -f
+    RewriteRule ^$ index.html [END]
+
+    RewriteCond %{REQUEST_URI} ^/public/ [NC]
+    RewriteRule ^ - [L]
+
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</IfModule>
+
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
