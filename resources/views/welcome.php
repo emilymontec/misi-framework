@@ -120,7 +120,7 @@
             <span class="q-prompt q-prompt-bash" data-install-prompt="bash">$</span>
             <span class="q-prompt q-prompt-ps" data-install-prompt="ps" style="display:none">PS></span>
             <span class="q-cmd" data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span>
-            <span class="q-cmd" data-install-cmd="ps" style="display:none">Invoke-Expression (New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh")</span>
+            <span class="q-cmd" data-install-cmd="ps" style="display:none">irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex</span>
           </div>
           <button class="btn-copy-quick" id="btnCopyQuick"
             data-copy='bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"'>
@@ -329,7 +329,7 @@ misi serve">
             </div>
           </div>
           <pre class="terminal-body"><code id="installCodeBlock"><span class="t-comment"># 0. instalar CLI global (mismo install.sh en todos los sistemas)</span>
-<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span><span data-install-cmd="ps" style="display:none">Invoke-Expression (New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh")</span>
+<span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> <span data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span><span data-install-cmd="ps" style="display:none">irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex</span>
 
 <span class="t-comment"># 1. crear y entrar al proyecto</span>
 <span class="t-prompt" data-install-prompt="bash">$</span><span class="t-prompt" data-install-prompt="ps" style="display:none">PS></span> misi new mi-proyecto

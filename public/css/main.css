@@ -1180,3 +1180,62 @@ section.page-section { padding: 90px 0 0; }
     .quick-install-code { font-size: 0.68rem; }
     .hero-description { font-size: 0.88rem; }
 }
+
+/* ============================================================
+   Instalador rápido: tabs (Linux/macOS/WSL vs Windows PowerShell)
+   Movido aquí desde el <style> inline de index.html (antes solo
+   existía ahí, así que resources/views/welcome.php -- que usa el
+   mismo markup .install-tabs/.install-tab -- se quedaba sin estos
+   estilos). Los overrides de margin/gap sobre .quick-install-box,
+   .quick-install-label, .quick-install-row y .terminal-bar quedan
+   deliberadamente DESPUÉS de sus reglas base de más arriba en este
+   mismo archivo, para conservar el mismo resultado visual que tenía
+   index.html cuando este bloque vivía en un <style> después del
+   <link> a main.css (la cascada por orden de aparición es la misma).
+   ============================================================ */
+.install-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+}
+.install-tabs--inline {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 3px;
+}
+.install-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-family: var(--font-tech);
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 150ms ease, color 150ms ease;
+}
+.install-tab:hover { color: #fff; background: rgba(255,255,255,0.06); }
+.install-tab.active {
+    color: var(--c-navy);
+    background: var(--c-lime);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
+.quick-install-box { margin-top: 48px; }
+.quick-install-label { font-family: var(--font-tech); font-size: 0.82rem; font-weight: 700; color: var(--c-ice-blue); letter-spacing: 0.3px; }
+.quick-install-box .install-tabs { align-self: flex-start; }
+.quick-install-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.terminal-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.terminal--install .terminal-title { display: none; }
+.install-tabs--inline .install-tab {
+    padding: 5px 10px;
+    font-size: 11px;
+}

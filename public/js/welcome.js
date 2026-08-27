@@ -7,8 +7,8 @@
       full: '# 0. instalar CLI global\nbash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"\n\n# 1. crear y entrar al proyecto\nmisi new mi-proyecto\ncd mi-proyecto\n\n# 2. preparar el entorno\ncp .env.example .env\nnano .env\n\n# 3-4. base de datos\nmisi migrate\nmisi db:seed\n\n# 5. arrancar\nmisi serve'
     },
     ps: {
-      quick: 'Invoke-Expression (New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh")',
-      full: '# 0. instalar CLI global\nInvoke-Expression (New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh")\n\n# 1. crear y entrar al proyecto\nmisi new mi-proyecto\ncd mi-proyecto\n\n# 2. preparar el entorno\ncopy .env.example .env\nnotepad .env\n\n# 3-4. base de datos\nmisi migrate\nmisi db:seed\n\n# 5. arrancar\nmisi serve'
+      quick: 'irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex',
+      full: '# 0. instalar CLI global\nirm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex\n\n# 1. crear y entrar al proyecto\nmisi new mi-proyecto\ncd mi-proyecto\n\n# 2. preparar el entorno\ncopy .env.example .env\nnotepad .env\n\n# 3-4. base de datos\nmisi migrate\nmisi db:seed\n\n# 5. arrancar\nmisi serve'
     }
   };
 

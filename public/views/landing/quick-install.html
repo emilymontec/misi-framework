@@ -1,0 +1,38 @@
+    <!-- INSTALACIÓN RÁPIDA (full-width) -->
+    <div class="quick-install-box">
+      <div class="quick-install-label">Instalación rápida</div>
+      <div class="install-tabs" role="tablist" aria-label="Sistema">
+        <button class="install-tab active" data-install-tab="bash" role="tab" aria-selected="true">
+          <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" x2="20" y1="19" y2="19" />
+          </svg>
+          Linux / macOS / WSL
+        </button>
+        <button class="install-tab" data-install-tab="ps" role="tab" aria-selected="false">
+          <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+            <path d="M3 3h18v18H3z" rx="3" />
+          </svg>
+          Windows PowerShell
+        </button>
+      </div>
+      <div class="quick-install-row">
+        <div class="quick-install-code" id="quickInstallCode">
+          <span class="q-prompt q-prompt-bash" data-install-prompt="bash">$</span>
+          <span class="q-prompt q-prompt-ps" data-install-prompt="ps" style="display:none">PS></span>
+          <span class="q-cmd" data-install-cmd="bash">bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"</span>
+          <span class="q-cmd" data-install-cmd="ps" style="display:none">irm https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | iex</span>
+        </div>
+        <button class="btn-copy-quick" id="btnCopyQuick"
+          data-copy='bash -c "curl -fsSL https://raw.githubusercontent.com/emilymontec/misi-framework/main/install.sh | sh"'>
+          <svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+          <span>Copiar</span>
+        </button>
+      </div>
+    </div>
+
