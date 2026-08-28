@@ -55,7 +55,7 @@ spl_autoload_register(function (string $class): void {
 
     $map = [
         'Misi\\Business\\' => __DIR__ . '/../business/',
-        'Misi\\' => __DIR__ . '/../framework/',
+        'Misi\\' => __DIR__ . '/../.misi/',
         'App\\' => $appBase . '/app/',
         'Modules\\' => $appBase . '/modules/',
     ];

@@ -5,7 +5,7 @@
 #
 #   El diseño original de Misi asumía que `htdocs/` en el hosting SOLO
 #   contendría lo que hoy es `public/` (index.php, css/, js/), y que
-#   framework/, business/, config/, storage/, etc. vivirían UN NIVEL
+#   .misi/, business/, config/, storage/, etc. vivirían UN NIVEL
 #   ARRIBA de htdocs (fuera del webroot, inaccesibles por URL).
 #
 #   InfinityFree (plan gratuito) no lo permite: la cuenta está enjaulada
@@ -16,9 +16,9 @@
 #   https://forum.infinityfree.com/t/unable-to-create-new-directory-in-root-folder/10174
 #
 #   Solución: TODO el proyecto vive dentro de htdocs/ (este archivo está
-#   en la raíz de htdocs/, junto a framework/, business/, public/, etc.),
+#   en la raíz de htdocs/, junto a .misi/, business/, public/, etc.),
 #   y este .htaccess reenvía cada petición hacia public/, para que
-#   framework/, business/, config/, storage/, database/, .env, etc.
+#   .misi/, business/, config/, storage/, database/, .env, etc.
 #   nunca sean servidos directamente por el navegador — el efecto es
 #   idéntico al diseño original, solo que la protección la da este
 #   archivo en vez de la ubicación física fuera del webroot.
@@ -54,7 +54,7 @@
     # resources/views/welcome.php (la bienvenida de desarrollo local,
     # que sigue sirviéndose por el router en cualquier otra ruta).
     # A propósito NO es una regla genérica de "si el archivo existe en
-    # la raíz, sírvelo": eso expondría framework/*.php, config/*.php,
+    # la raíz, sírvelo": eso expondría .misi/*.php, config/*.php,
     # etc. como archivos planos. Todo lo demás sigue forzado a pasar
     # por public/.
     #
@@ -81,7 +81,7 @@
     RewriteRule ^(.*)$ public/views/$1.html [END]
 
     # Si la petición ya apunta a /public/... (poco común, pero evita bucles
-    # y evita que alguien intente acceder a /public/framework/... etc.)
+    # y evita que alguien intente acceder a /public/.misi/... etc.)
     RewriteCond %{REQUEST_URI} ^/public/ [NC]
     RewriteRule ^ - [L]
 
@@ -98,7 +98,7 @@
 
 # Defensa en profundidad: si mod_rewrite no estuviera disponible por
 # algún motivo, bloquear todo acceso directo a este nivel en vez de
-# arriesgarse a exponer framework/, business/, config/ o .env.
+# arriesgarse a exponer .misi/, business/, config/ o .env.
 <IfModule !mod_rewrite.c>
     <IfModule mod_authz_core.c>
         Require all denied

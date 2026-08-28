@@ -25,7 +25,7 @@ use Misi\Exceptions\NotFoundException;
  * dejó deliberadamente afuera, y por qué.
  *
  * Cómo se usa en un proyecto: se copia la carpeta `business/` (igual que
- * `framework/`) junto al proyecto, y el controlador del proyecto
+ * `.misi/`) junto al proyecto, y el controlador del proyecto
  * instancia esta clase directamente — Business Core NO se registra en
  * `Application` (el framework no debe saber qué es un cliente, ver
  * ROADMAP.md sección 36).

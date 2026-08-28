@@ -2,7 +2,7 @@
 #
 # Necesario en cualquier hosting (incluido InfinityFree y similares)
 # donde el proyecto completo vive dentro del webroot en vez de tener
-# framework/, config/, .env, etc. un nivel por fuera de él. Sin este
+# .misi/, config/, .env, etc. un nivel por fuera de él. Sin este
 # archivo, esos archivos quedarían accesibles directamente por URL.
 #
 # Reenvía toda petición hacia public/ (el único directorio pensado
@@ -23,7 +23,7 @@
     # PHP) — es la bienvenida estática de despliegue (ver index.html).
     # A propósito NO es una regla genérica de "si el archivo existe en
     # la raíz, sírvelo": eso expondría config/database.php,
-    # framework/*.php, etc. como archivos planos. Todo lo demás sigue
+    # .misi/*.php, etc. como archivos planos. Todo lo demás sigue
     # forzado a pasar por public/.
     # OJO con [L] aquí: en contexto de .htaccess (por-directorio), [L]
     # NO detiene la reescritura del todo — Apache hace un internal

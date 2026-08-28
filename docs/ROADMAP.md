@@ -143,7 +143,7 @@ limpiamente. Ver [`docs/database.md`](docs/database.md).
       `Validator` real — `Application::handleException()` ya la traduce a
       un 422 JSON con errores estructurados
 - [x] Errores estructurados por campo (`{"field": ["mensaje1", "mensaje2"]}`)
-- [x] Helper global `app()` (`framework/Support/helpers.php`) — agregado
+- [x] Helper global `app()` (`.misi/Support/helpers.php`) — agregado
       antes de tiempo respecto al roadmap original (Fase 32/Helpers) porque
       el Router no tiene contenedor de DI: sin él, cada controlador tendría
       que reconstruir su propia conexión a `Database` a mano. Es un único
@@ -441,8 +441,8 @@ funcionando junto, sin ser parte del framework.
 
 - [x] `examples/demo-app/` con: login, usuarios, CRUD, base de datos,
       validación, upload, API, permisos, un módulo de ejemplo
-- [x] Explícitamente fuera de `framework/`, `app/`, `modules/` de producción
-- [x] Reutiliza el `framework/` del proyecto padre por ruta relativa (no
+- [x] Explícitamente fuera de `.misi/`, `app/`, `modules/` de producción
+- [x] Reutiliza el `.misi/` del proyecto padre por ruta relativa (no
       copia) — demuestra en código, no solo en documentación, la premisa
       central del proyecto: construir una vez, reutilizar en múltiples
       proyectos

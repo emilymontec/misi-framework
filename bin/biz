@@ -185,7 +185,7 @@ try {
  *    separarlo claramente de lo que es infraestructura de Misi).
  *  - `{$relative}` (sin prefijo) — convención plana usada por el propio
  *    repositorio de desarrollo de Misi (este repo: database/migrations/,
- *    modules/, etc. viven en la raíz junto a framework/, business/,
+ *    modules/, etc. viven en la raíz junto a .misi/, business/,
  *    examples/) y por cualquier proyecto creado antes de que `backend/`
  *    se volviera la convención oficial.
  *
@@ -206,7 +206,7 @@ function resolveProjectPath(string $basePath, string $relative): string
 /**
  * Arma el Migrator con la fuente 'core' (database/migrations/ dentro de
  * backend/ en un proyecto generado, o en la raíz en el propio repo del
- * framework — ver resolveProjectPath()), la fuente 'Business'
+ * misi/ — ver resolveProjectPath()), la fuente 'Business'
  * (business/migrations/, Fase 16 — solo si el proyecto copió esa
  * carpeta; no todo proyecto usa Business Core) y una fuente por cada
  * módulo que declare carpeta de migraciones.
@@ -445,7 +445,7 @@ function runDoctor(string $basePath): void
     }
 
     // Extensiones requeridas: mbstring (composer.json ext-mbstring) +
-    // pdo/pdo_mysql (Database usa PDO contra MySQL, ver framework/Database/Database.php).
+    // pdo/pdo_mysql (Database usa PDO contra MySQL, ver .misi/Database/Database.php).
     foreach (['mbstring', 'pdo', 'pdo_mysql'] as $extension) {
         if (extension_loaded($extension)) {
             echo ok("Extensión {$extension}") . "\n";
@@ -630,7 +630,7 @@ function runFresh(Migrator $migrator, array $args): void
  *   ├── backend/          (modules/, database/)
  *   ├── templates/        (vistas HTML)
  *   ├── public/           (entry point, CSS, JS)
- *   ├── framework/        (núcleo técnico de Misi)
+ *   ├── .misi/            (núcleo técnico de Misi, carpeta oculta)
  *   ├── bootstrap/        (autoloader + app bootstrap)
  *   ├── config/           (app.php, database.php, etc.)
  *   ├── bin/              (CLI: biz, server.php)
@@ -677,7 +677,7 @@ function runNew(string $basePath, ?string $name, array $args): void
     // 1. Copiar la plantilla limpia (backend/, templates/, public/, .gitignore, .env.example)
     copyScaffold($scaffold, $target);
 
-    // 2. Copiar el núcleo del framework (framework/, bootstrap/, config/, bin/, routes/)
+    // 2. Copiar el núcleo del framework (.misi/, bootstrap/, config/, bin/, routes/)
     copyFrameworkCore($basePath, $target);
 
     // 3. Crear storage/ vacío
@@ -727,7 +727,7 @@ function runNew(string $basePath, ?string $name, array $args): void
     echo "  ├── backend/        modules/, database/\n";
     echo "  ├── templates/      vistas HTML (vacío — ver misi make:controller)\n";
     echo "  ├── public/         entry point, CSS, JS\n";
-    echo "  ├── framework/      núcleo Misi\n";
+    echo "  ├── .misi/           núcleo Misi (carpeta oculta)\n";
     echo "  ├── config/         configuración\n";
     echo "  ├── routes/         rutas\n";
     echo "  ├── index.html      bienvenida (editable)\n";
@@ -771,7 +771,7 @@ function copyScaffold(string $scaffold, string $target): void
 
 /**
  * Copia los directorios esenciales del framework al proyecto nuevo:
- * framework/, bootstrap/, config/, bin/, routes/.
+ * .misi/, bootstrap/, config/, bin/, routes/.
  *
  * NO copia: app/, modules/, business/, resources/views/, public/css/main.css,
  * public/css/uikit.css, index.html, ui-kit.html, install.sh, docs/, etc.
@@ -787,7 +787,7 @@ function copyScaffold(string $scaffold, string $target): void
  */
 function copyFrameworkCore(string $basePath, string $target): void
 {
-    $includeDirs = ['framework', 'bootstrap', 'config', 'bin', 'routes', 'resources/stubs'];
+    $includeDirs = ['.misi', 'bootstrap', 'config', 'bin', 'routes', 'resources/stubs'];
 
     foreach ($includeDirs as $dir) {
         $source = $basePath . '/' . $dir;

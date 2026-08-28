@@ -7,7 +7,7 @@ use Misi\Database\Migration;
 /**
  * Fase 15 (revisión de rendimiento): Auth::can() filtra role_user por
  * user_id en cada verificación de permiso ("WHERE ru.user_id = ?" en
- * framework/Auth/Auth.php). La única clave existente en role_user es la
+ * .misi/Auth/Auth.php). La única clave existente en role_user es la
  * PRIMARY KEY compuesta (role_id, user_id) — por la regla de prefijo
  * izquierdo de InnoDB, esa clave NO sirve para filtrar solo por user_id,
  * así que esa consulta hacía un table scan completo de role_user en

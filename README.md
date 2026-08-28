@@ -257,7 +257,7 @@ This is not “work pending to be done soon”: it is work deliberately postpone
 
 ```
 Misi/
-├── framework/              # Technical core (namespace Misi\)
+├── .misi/              # Technical core (namespace Misi\)
 │   ├── Core/
 │   ├── Database/
 │   ├── Http/
