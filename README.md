@@ -164,20 +164,12 @@ Misi is part of a software development business model:
 
 1. Identify common problems faced by small businesses.
 2. Create systems to solve them.
-3. Reuse the same technical foundation.
+3. Reuse the same foundation.
 4. Tailor each system to the client.
 5. Reduce development time and costs.
 6. Charge for implementation → customizations → maintenance.
 7. Evolve reusable components.
 8. Eventually turn solutions into SaaS products.
-
-We don’t develop every application from scratch:
-
-```
-Project 1 → detect repetitive code → extract functionality
-          → generalize → add to the framework → Project 2
-          → reuse → improve → Project 3 → ...
-```
 
 </p>
 
