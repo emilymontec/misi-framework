@@ -66,7 +66,7 @@ MISI IS NOT a general-purpose framework and DOES NOT compete with Laravel, Symfo
 
 
 
-> \*\*Philosophy:\*\* Build repetitive technical features once and reuse them across multiple projects; then build a layer of reusable business features on top of that.
+> \\\*\\\*Philosophy:\\\*\\\* Build repetitive technical features once and reuse them across multiple projects; then build a layer of reusable business features on top of that.
 
 
 
@@ -74,7 +74,7 @@ Misi’s success isn’t measured by how many features it has, but by a single q
 
 
 
-> \*\*How much time do I save when creating the second project?\*\*
+> \\\*\\\*How much time do I save when creating the second project?\\\*\\\*
 
 </p>
 
@@ -86,9 +86,9 @@ Misi’s success isn’t measured by how many features it has, but by a single q
 
 | \*\*Technical framework\*\* | Configuration, routing, HTTP, database, authentication, validation, sessions, security, storage, logging. It doesn't know what an “order” or a “customer” is. |
 
-| \*\*Business Core\*\* | Reusable administrative features across projects (`Misi\\Business\\`): customers, products, categories — without industry-specific logic. |
+| \*\*Business Core\*\* | Reusable administrative features across projects (`Misi\\\\Business\\\\`): customers, products, categories — without industry-specific logic. |
 
-|  \*\*Modules\*\* | Features specific to a particular business type (`Modules\\`), leveraging the Business Core. Currently: `Catalog`. |
+|  \*\*Modules\*\* | Features specific to a particular business type (`Modules\\\\`), leveraging the Business Core. Currently: `Catalog`. |
 
 |  \*\*CLI (`misi`)\*\* | Development commands with grouped syntax, aliases, and guaranteed backward compatibility. |
 
@@ -134,7 +134,7 @@ Build the foundation for a new administrative system by reusing the entire Frame
 
 
 
-Add a new business module (`Modules\\`) or generalize a Business Core feature when 2 or more real projects use it repeatedly.
+Add a new business module (`Modules\\\\`) or generalize a Business Core feature when 2 or more real projects use it repeatedly.
 
 
 
@@ -216,13 +216,13 @@ misi create business <tipo>    # create/activate a business type (currently: cat
 
 
 
-Namespace `Misi\\Business\\`. Reusable administrative features across projects, without industry-specific logic:
+Namespace `Misi\\\\Business\\\\`. Reusable administrative features across projects, without industry-specific logic:
 
 
 
 \- `CustomerRepository`
 
-\- `ProductRepository` — includes `adjustStock()`, atomic inventory adjustment via a single `UPDATE ... WHERE stock\_quantity + ? >= 0`, without application-level locking.
+\- `ProductRepository` — includes `adjustStock()`, atomic inventory adjustment via a single `UPDATE ... WHERE stock\\\_quantity + ? >= 0`, without application-level locking.
 
 \- Category support
 
@@ -242,7 +242,7 @@ Namespace `Misi\\Business\\`. Reusable administrative features across projects, 
 
 
 
-Namespace `Modules\\`. A module can contain:
+Namespace `Modules\\\\`. A module can contain:
 
 
 
@@ -358,49 +358,49 @@ Misi is part of a software development business model:
 
 ```
 
-&#x20;                   Misi
+\&#x20;                   Misi
 
-&#x20;                     │
+\&#x20;                     │
 
-&#x20;       ┌─────────────┴─────────────┐
+\&#x20;       ┌─────────────┴─────────────┐
 
-&#x20;       │                           │
+\&#x20;       │                           │
 
-&#x20;   FRAMEWORK                 BUSINESS CORE
+\&#x20;   FRAMEWORK                 BUSINESS CORE
 
-&#x20;  (namespace Misi\\)         (namespace Misi\\Business\\)
+\&#x20;  (namespace Misi\\\\)         (namespace Misi\\\\Business\\\\)
 
-&#x20;       │                           │
+\&#x20;       │                           │
 
-&#x20;       │                     Clientes, Productos,
+\&#x20;       │                     Clientes, Productos,
 
-&#x20;       │                     Categorías, (Pedidos,
+\&#x20;       │                     Categorías, (Pedidos,
 
-&#x20;       │                     Pagos, etc. — futuros)
+\&#x20;       │                     Pagos, etc. — futuros)
 
-&#x20;       │                           │
+\&#x20;       │                           │
 
-&#x20;       └─────────────┬─────────────┘
+\&#x20;       └─────────────┬─────────────┘
 
-&#x20;                      │
+\&#x20;                      │
 
-&#x20;                   MODULES
+\&#x20;                   MODULES
 
-&#x20;                (namespace Modules\\)
+\&#x20;                (namespace Modules\\\\)
 
-&#x20;                      │
+\&#x20;                      │
 
-&#x20;             ┌────────┼────────┐
+\&#x20;             ┌────────┼────────┐
 
-&#x20;             ↓        ↓        ↓
+\&#x20;             ↓        ↓        ↓
 
-&#x20;          Catalog  (futuros: Ropa, Bordados, Inventario)
+\&#x20;          Catalog  (futuros: Ropa, Bordados, Inventario)
 
-&#x20;                      │
+\&#x20;                      │
 
-&#x20;                      ↓
+\&#x20;                      ↓
 
-&#x20;                 CUSTOMER APPLICATION
+\&#x20;                 CUSTOMER APPLICATION
 
 ```
 
@@ -456,7 +456,7 @@ Explicitly frozen, documented with their rationale in `ROADMAP.md`, and revisite
 
 \- Payments, Deliveries, Files, Reports in the Business Core
 
-\- `Modules\\Inventory`, `Modules\\Clothing`, `Modules\\Embroidery`
+\- `Modules\\\\Inventory`, `Modules\\\\Clothing`, `Modules\\\\Embroidery`
 
 
 
@@ -504,7 +504,7 @@ This is not “work pending to be done soon”: it is work deliberately postpone
 
 Misi/
 
-├── .misi/                    # Technical core (namespace Misi\\) — hidden on purpose
+├── .misi/                    # Technical core (namespace Misi\\\\) — hidden on purpose
 
 │   ├── Core/
 
@@ -530,19 +530,19 @@ Misi/
 
 │
 
-├── business/                 # Business Core (namespace Misi\\Business\\)
+├── business/                 # Business Core (namespace Misi\\\\Business\\\\)
 
 │   └── ...                   # CustomerRepository, ProductRepository, etc.
 
 │
 
-├── modules/                  # Business modules (namespace Modules\\)
+├── modules/                  # Business modules (namespace Modules\\\\)
 
 │   └── Catalog/
 
 │
 
-├── app/                      # This repo's own demo controllers (namespace App\\)
+├── app/                      # This repo's own demo controllers (namespace App\\\\)
 
 │
 
@@ -552,9 +552,9 @@ Misi/
 
 │   ├── misi                  # Global CLI wrapper (Linux/macOS)
 
-│   └── build-landing.php     # Builds index.html + public/views/\*.html from
+│   └── build-landing.php     # Builds index.html + public/views/\\\*.html from
 
-│                             # public/views/\_partials/ and \_content/
+│                             # public/views/\\\_partials/ and \\\_content/
 
 ├── misi.cmd                  # Windows CLI wrapper (batch)
 
@@ -578,7 +578,7 @@ Misi/
 
 │   └── views/                # Generated marketing pages (/cli, /misi, /ui-kit, ...)
 
-│                             # plus their \_partials/ and \_content/ sources
+│                             # plus their \\\_partials/ and \\\_content/ sources
 
 ├── resources/
 
@@ -586,7 +586,7 @@ Misi/
 
 │   ├── scaffold/             # Template copied by "misi new" into every new project
 
-│   └── stubs/                # Templates used by the make:\* generators
+│   └── stubs/                # Templates used by the make:\\\* generators
 
 │
 
@@ -666,13 +666,12 @@ Proprietary project for internal use. Not publicly distributed.
 
 <!--
 
-\## Appendices
+\\## Appendices
 
-See the \[UserGuide](docs/MANUAL%20USUARIO%20KEISY%20MEDICAL.pdf) to learn more.
+See the \\\[UserGuide](docs/MANUAL%20USUARIO%20KEISY%20MEDICAL.pdf) to learn more.
 
 
 
-If you want to know more about the system, please check the \[Documentation](docs/DOCUMENTACION%20TECNICA%20KEISY%20MEDICAL.pdf).
+If you want to know more about the system, please check the \\\[Documentation](docs/DOCUMENTACION%20TECNICA%20KEISY%20MEDICAL.pdf).
 
-\-->
 
