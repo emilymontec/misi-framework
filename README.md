@@ -439,76 +439,9 @@ The generated project is focused on the application itself: configuration, route
 ## License
 
 Proprietary project for internal use. Not publicly distributed.
-<!--
+
 ---
 
-## Built with Misi
-
-<p align="justify">
-
-The following applications have been built using Misi as their technical foundation.
-
-Each project starts from the framework's existing infrastructure and is then developed and customized according to its own requirements.
-
-</p>
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-<h3>Project Name</h3>
-
-<p align="justify">
-
-Brief description of the business or application.
-
-Explain what the website does and the type of functionality developed for this specific project.
-
-<strong>Industry:</strong> [Industry]<br>
-<strong>Type:</strong> [Website / Administrative System / Commercial Application]
-<br><br>
-<a href="https://example.com" target="_blank">Visit website →</a>
-</td>
-
-<td width="50%" valign="top">
-
-<img src="docs/readme_assets/projects/project-name-preview.png" alt="Project Name">
-
-</td>
-</tr>
-
-<tr>
-<td width="50%" valign="top">
-
-<img src="docs/readme_assets/projects/project-name-2-preview.png" alt="Project Name 2">
-
-</td>
-
-<td width="50%" valign="top">
-
-<h3>Project Name 2</h3>
-
-<p align="justify">
-
-Brief description of the business or application.
-
-Explain what was built specifically for this project while using Misi as the underlying technical framework.
-
-<strong>Industry:</strong> [Industry]<br>
-<strong>Type:</strong> [Website / Administrative System / Commercial Application]
-<br><br>
-<a href="https://example.com" target="_blank">Visit website →</a>
-
-</td>
-</tr>
-</table>
-
-<div align="center">
-    <sub> This are some projects I made with the Misi Framework, if you want to see all of them go <a href="">here</a></sub>
-</div>
-
-
 ## Appendices
-See the [UserGuide](docs/) to learn more.
-If you want to know more about the system, please check the [Documentation](docs/).
--->
+
+If you want to know more about the system, please check the [Documentation](docs/DOCUMENTACION%20TECNICA%20MISI%20FRAMEWORK.pdf).
